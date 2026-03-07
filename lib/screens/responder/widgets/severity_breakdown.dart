@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../providers/locale_provider.dart';
 
 class SeverityBreakdown extends StatelessWidget {
   final int sosCount;
@@ -16,6 +18,7 @@ class SeverityBreakdown extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final locale = context.watch<LocaleProvider>();
     final normalCount = totalCount - sosCount - urgentCount;
 
     return Padding(
@@ -24,11 +27,11 @@ class SeverityBreakdown extends StatelessWidget {
         children: [
           _countBadge('SOS', sosCount, AppColors.sosRed),
           const SizedBox(width: 10),
-          _countBadge('Urgent', urgentCount, AppColors.urgentOrange),
+          _countBadge(locale.t('urgent'), urgentCount, AppColors.urgentOrange),
           const SizedBox(width: 10),
-          _countBadge('Normal', normalCount < 0 ? 0 : normalCount, AppColors.textMuted),
+          _countBadge(locale.t('normal'), normalCount < 0 ? 0 : normalCount, AppColors.textMuted),
           const SizedBox(width: 10),
-          _countBadge('Total', totalCount, AppColors.accent),
+          _countBadge(locale.t('total'), totalCount, AppColors.accent),
         ],
       ),
     );

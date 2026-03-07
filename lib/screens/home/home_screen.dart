@@ -169,10 +169,10 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(width: 8),
                   const Icon(Icons.workspace_premium, size: 14, color: Color(0xFFFFD700)),
                   const SizedBox(width: 6),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'au Starlink Direct — satellite mode active, text only',
-                      style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                      locale.t('satellite_banner'),
+                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
                   ),
                   GestureDetector(
@@ -260,6 +260,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showConnectionInfo(BuildContext context, ConnectivityProvider conn) {
+    final locale = context.read<LocaleProvider>();
     showModalBottomSheet(
       context: context,
       builder: (_) => Padding(
@@ -300,16 +301,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ],
               ),
-              subtitle: const Text('Satellite backup for areas with no cellular coverage', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              subtitle: Text(locale.t('satellite_backup'), style: const TextStyle(color: AppColors.textMuted, fontSize: 12)),
               value: conn.isSatellite,
               onChanged: (_) => conn.toggleSatelliteMock(),
             ),
             const SizedBox(height: 12),
-            const Text('Communication Layers', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13)),
+            Text(locale.t('communication_layers'), style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13)),
             const SizedBox(height: 8),
-            _connectionLayer(Icons.bluetooth, 'BLE Mesh', 'P2P, ~50m range, relay via nearby devices'),
-            _connectionLayer(Icons.satellite_alt, 'Starlink Satellite', 'Backup for mountains/remote areas'),
-            _connectionLayer(Icons.wifi, 'WiFi / Cellular', 'Full cloud sync when available'),
+            _connectionLayer(Icons.bluetooth, locale.t('ble_mesh'), locale.t('ble_layer_desc')),
+            _connectionLayer(Icons.satellite_alt, locale.t('starlink'), locale.t('satellite_layer_desc')),
+            _connectionLayer(Icons.wifi, 'WiFi / ${locale.t('cellular')}', locale.t('wifi_layer_desc')),
             const SizedBox(height: 16),
           ],
         ),

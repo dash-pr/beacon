@@ -12,6 +12,15 @@ class MessageProvider extends ChangeNotifier {
   final List<MessageModel> _messages = [];
   final Map<String, String> _knownUsers = {}; // deviceId -> displayName
   StreamSubscription? _meshSubscription;
+  bool _demoSeeded = false;
+
+  static const _demoUsers = {
+    'demo-tanaka': 'Tanaka Yuki',
+    'demo-sato': 'Sato Kenji',
+    'demo-suzuki': 'Suzuki Aoi',
+    'demo-yamamoto': 'Yamamoto Hana',
+    'demo-nakamura': 'Nakamura Ren',
+  };
 
   List<MessageModel> get messages => List.unmodifiable(_messages);
   Map<String, String> get knownUsers => Map.unmodifiable(_knownUsers);
@@ -52,8 +61,170 @@ class MessageProvider extends ChangeNotifier {
         .length;
   }
 
+  void _seedDemo() {
+    if (_demoSeeded) return;
+    _demoSeeded = true;
+
+    // Add demo users to known users
+    _knownUsers.addAll(_demoUsers);
+
+    final now = DateTime.now();
+    const uuid = Uuid();
+
+    // Seed demo DM conversations
+    _messages.addAll([
+      // Tanaka — backcountry buddy
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-tanaka',
+        senderName: 'Tanaka Yuki',
+        content: 'Hey, are you heading to the Niseko backcountry tomorrow?',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(hours: 2, minutes: 15)),
+        recipientId: app.deviceId,
+      ),
+      MessageModel(
+        id: uuid.v4(),
+        senderId: app.deviceId,
+        senderName: app.displayName,
+        content: 'Yes! Planning to hit the east face. Avalanche report looks clear.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(hours: 2, minutes: 10)),
+        recipientId: 'demo-tanaka',
+      ),
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-tanaka',
+        senderName: 'Tanaka Yuki',
+        content: 'Great, I\'ll bring the beacon and probe. Meet at the trailhead at 7am?',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(hours: 2, minutes: 5)),
+        recipientId: app.deviceId,
+      ),
+      // Sato — emergency coordination
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-sato',
+        senderName: 'Sato Kenji',
+        content: 'The shelter at Minato City Hall is almost full. Can you check the one in Azabu?',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.urgent.index,
+        timestamp: now.subtract(const Duration(hours: 1, minutes: 30)),
+        recipientId: app.deviceId,
+      ),
+      MessageModel(
+        id: uuid.v4(),
+        senderId: app.deviceId,
+        senderName: app.displayName,
+        content: 'On my way there now. Will report back.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(hours: 1, minutes: 25)),
+        recipientId: 'demo-sato',
+      ),
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-sato',
+        senderName: 'Sato Kenji',
+        content: 'Thanks. Water supply truck arriving at your location in 20 min.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(hours: 1, minutes: 20)),
+        recipientId: app.deviceId,
+      ),
+      // Suzuki — medical
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-suzuki',
+        senderName: 'Suzuki Aoi',
+        content: 'Do you have any first aid supplies? There\'s an injured person near the station.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.urgent.index,
+        timestamp: now.subtract(const Duration(minutes: 45)),
+        recipientId: app.deviceId,
+      ),
+      // Yamamoto — community update
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-yamamoto',
+        senderName: 'Yamamoto Hana',
+        content: 'The gas leak in building 4 has been sealed. All clear to return.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(minutes: 30)),
+        recipientId: app.deviceId,
+      ),
+      // Nakamura — gear check
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-nakamura',
+        senderName: 'Nakamura Ren',
+        content: 'Do you still have that extra radio? Could use one for the rescue team.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(minutes: 15)),
+        recipientId: app.deviceId,
+      ),
+    ]);
+
+    // Seed some demo community messages
+    _messages.addAll([
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-sato',
+        senderName: 'Sato Kenji',
+        content: 'Earthquake magnitude 6.2 reported. Everyone please check in.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.urgent.index,
+        timestamp: now.subtract(const Duration(hours: 3)),
+      ),
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-yamamoto',
+        senderName: 'Yamamoto Hana',
+        content: 'I\'m safe. Gas smell in our building though — evacuating now.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(hours: 2, minutes: 50)),
+      ),
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-tanaka',
+        senderName: 'Tanaka Yuki',
+        content: 'All okay in Shibuya area. Some broken glass but no injuries nearby.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(hours: 2, minutes: 40)),
+      ),
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-suzuki',
+        senderName: 'Suzuki Aoi',
+        content: 'Water distribution point set up at Shinjuku Central Park. Bring containers.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.normal.index,
+        timestamp: now.subtract(const Duration(hours: 1)),
+      ),
+      MessageModel(
+        id: uuid.v4(),
+        senderId: 'demo-nakamura',
+        senderName: 'Nakamura Ren',
+        content: 'Road to Ueno is blocked. Use alternate route via Akihabara.',
+        typeIndex: MessageType.text.index,
+        priorityIndex: Priority.urgent.index,
+        timestamp: now.subtract(const Duration(minutes: 40)),
+      ),
+    ]);
+
+    _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
+  }
+
   void init(BleMeshService meshService) {
     loadFromHive();
+    _seedDemo();
     _meshSubscription = meshService.onMessageReceived.listen((message) {
       _trackUser(message);
       // Only show messages addressed to us or broadcast
@@ -67,6 +238,7 @@ class MessageProvider extends ChangeNotifier {
 
   void loadFromHive() {
     _messages.clear();
+    _demoSeeded = false;
     final allMessages = app.messageBox.values.toList();
     for (final m in allMessages) {
       _trackUser(m);
@@ -74,6 +246,7 @@ class MessageProvider extends ChangeNotifier {
         _messages.add(m);
       }
     }
+    _seedDemo();
     _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
     notifyListeners();
   }

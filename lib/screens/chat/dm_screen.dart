@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/mesh_provider.dart';
 import '../../providers/message_provider.dart';
 import '../../services/ai/voice_service.dart';
@@ -129,8 +130,8 @@ class _DmScreenState extends State<DmScreen> {
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  'Direct message',
-                  style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+                  context.read<LocaleProvider>().t('direct_message'),
+                  style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
               ],
             ),
@@ -148,13 +149,13 @@ class _DmScreenState extends State<DmScreen> {
                         Icon(Icons.lock_outline, size: 48, color: AppColors.textMuted),
                         const SizedBox(height: 12),
                         Text(
-                          'Direct message with ${widget.userName}',
+                          '${context.read<LocaleProvider>().t('dm_with')} ${widget.userName}',
                           style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
                         ),
                         const SizedBox(height: 4),
-                        const Text(
-                          'Messages are sent via BLE mesh',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        Text(
+                          context.read<LocaleProvider>().t('messages_via_ble'),
+                          style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                         ),
                       ],
                     ),
@@ -173,14 +174,14 @@ class _DmScreenState extends State<DmScreen> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 8),
               color: AppColors.primary.withAlpha(20),
-              child: const Row(
+              child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.mic, size: 16, color: AppColors.primary),
-                  SizedBox(width: 8),
+                  const Icon(Icons.mic, size: 16, color: AppColors.primary),
+                  const SizedBox(width: 8),
                   Text(
-                    'Listening...',
-                    style: TextStyle(fontSize: 12, color: AppColors.primary),
+                    context.read<LocaleProvider>().t('listening'),
+                    style: const TextStyle(fontSize: 12, color: AppColors.primary),
                   ),
                 ],
               ),

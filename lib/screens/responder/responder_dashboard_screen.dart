@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/responder_provider.dart';
 import 'widgets/severity_breakdown.dart';
 import 'widgets/filter_chips_bar.dart';
@@ -21,6 +22,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<ResponderProvider>();
+    final locale = context.watch<LocaleProvider>();
     final messages = provider.filteredMessages;
     final locationMessages = provider.messagesWithLocation;
 
@@ -34,9 +36,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
             children: [
               const Icon(Icons.dashboard, size: 18, color: AppColors.accent),
               const SizedBox(width: 8),
-              const Text(
-                'Responder Dashboard',
-                style: TextStyle(
+              Text(
+                locale.t('responder_dashboard'),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
@@ -49,7 +51,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                 ),
                 onPressed: () => setState(() => _showMap = !_showMap),
                 color: AppColors.accent,
-                tooltip: 'Toggle map',
+                tooltip: locale.t('toggle_map'),
               ),
               IconButton(
                 icon: const Icon(Icons.refresh, size: 20),
@@ -67,8 +69,8 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
           totalCount: provider.totalCount,
         ),
 
-        // Map with SOS pins
-        if (_showMap && locationMessages.isNotEmpty)
+        // Map with SOS pins + heatmap
+        if (_showMap)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: ResponderMap(messages: locationMessages),
@@ -83,10 +85,10 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
         // SOS Feed
         Expanded(
           child: messages.isEmpty
-              ? const Center(
+              ? Center(
                   child: Text(
-                    'No messages matching filter',
-                    style: TextStyle(color: AppColors.textMuted),
+                    locale.t('no_matching'),
+                    style: const TextStyle(color: AppColors.textMuted),
                   ),
                 )
               : SosFeedList(messages: messages),

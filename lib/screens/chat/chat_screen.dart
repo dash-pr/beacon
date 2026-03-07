@@ -121,10 +121,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   }
 
   void _openCamera() {
+    final locale = context.read<LocaleProvider>();
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => Scaffold(
-          appBar: AppBar(title: const Text('Camera Triage')),
+          appBar: AppBar(title: Text(locale.t('camera_triage'))),
           body: const CameraScreen(),
         ),
       ),
@@ -141,11 +142,12 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   void _showNewDmDialog() {
     final messageProvider = context.read<MessageProvider>();
+    final locale = context.read<LocaleProvider>();
     final users = messageProvider.knownUsers;
 
     if (users.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No users discovered yet. Send messages in community chat first.')),
+        SnackBar(content: Text(locale.t('no_users_discovered'))),
       );
       return;
     }
@@ -158,9 +160,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Start a direct message',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            Text(
+              locale.t('start_dm'),
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
             ),
             const SizedBox(height: 16),
             ...users.entries.map((entry) => ListTile(
@@ -190,9 +192,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
+    final locale = context.watch<LocaleProvider>();
+
     return Column(
       children: [
-        // Tab bar
         Container(
           color: AppColors.surface,
           child: TabBar(
@@ -200,9 +203,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             indicatorColor: AppColors.primary,
             labelColor: AppColors.primary,
             unselectedLabelColor: AppColors.textMuted,
-            tabs: const [
-              Tab(text: 'Community'),
-              Tab(text: 'Direct Messages'),
+            tabs: [
+              Tab(text: locale.t('community')),
+              Tab(text: locale.t('direct_messages')),
             ],
           ),
         ),
@@ -221,6 +224,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   Widget _buildCommunityTab() {
     final messageProvider = context.watch<MessageProvider>();
+    final locale = context.watch<LocaleProvider>();
     final messages = messageProvider.communityMessages;
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
@@ -229,17 +233,17 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
       children: [
         Expanded(
           child: messages.isEmpty
-              ? const Center(
+              ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.bluetooth_searching, size: 48, color: AppColors.textMuted),
-                      SizedBox(height: 12),
-                      Text('No messages yet', style: TextStyle(fontSize: 16, color: AppColors.textMuted)),
-                      SizedBox(height: 4),
+                      const Icon(Icons.bluetooth_searching, size: 48, color: AppColors.textMuted),
+                      const SizedBox(height: 12),
+                      Text(locale.t('no_messages'), style: const TextStyle(fontSize: 16, color: AppColors.textMuted)),
+                      const SizedBox(height: 4),
                       Text(
-                        'Messages sent via BLE mesh will appear here',
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        locale.t('ble_messages_here'),
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                       ),
                     ],
                   ),
@@ -253,18 +257,17 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   },
                 ),
         ),
-        // Listening indicator
         if (_isListening)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
             color: AppColors.primary.withAlpha(20),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.mic, size: 16, color: AppColors.primary),
-                SizedBox(width: 8),
-                Text('Listening...', style: TextStyle(fontSize: 12, color: AppColors.primary)),
+                const Icon(Icons.mic, size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
+                Text(locale.t('listening'), style: const TextStyle(fontSize: 12, color: AppColors.primary)),
               ],
             ),
           ),
@@ -278,7 +281,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             top: false,
             child: Row(
               children: [
-                // SOS button
                 GestureDetector(
                   onTap: _sendSos,
                   child: Container(
@@ -302,7 +304,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   onPressed: _openCamera,
                   icon: const Icon(Icons.camera_alt_outlined, size: 22),
                   color: AppColors.primary,
-                  tooltip: 'Camera Triage',
+                  tooltip: locale.t('camera_triage'),
                 ),
                 GestureDetector(
                   onLongPressStart: _voiceReady ? (_) => _startListening() : null,
@@ -330,9 +332,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                     controller: _controller,
                     textInputAction: TextInputAction.send,
                     onSubmitted: (_) => _sendMessage(),
-                    decoration: const InputDecoration(
-                      hintText: 'Type a message...',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    decoration: InputDecoration(
+                      hintText: locale.t('type_message'),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
                   ),
                 ),
@@ -351,10 +353,10 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
 
   Widget _buildDmTab() {
     final messageProvider = context.watch<MessageProvider>();
+    final locale = context.watch<LocaleProvider>();
     final knownUsers = messageProvider.knownUsers;
     final dmUserIds = messageProvider.dmUserIds;
 
-    // Merge: users with DM history first, then other known users
     final allUserIds = <String>{...dmUserIds, ...knownUsers.keys};
 
     return Column(
@@ -365,14 +367,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.people_outline, size: 48, color: AppColors.textMuted),
+                      const Icon(Icons.people_outline, size: 48, color: AppColors.textMuted),
                       const SizedBox(height: 12),
-                      const Text('No users discovered yet', style: TextStyle(fontSize: 16, color: AppColors.textMuted)),
+                      Text(locale.t('no_users_yet'), style: const TextStyle(fontSize: 16, color: AppColors.textMuted)),
                       const SizedBox(height: 4),
-                      const Text(
-                        'Users will appear when they send messages\nvia BLE mesh',
+                      Text(
+                        locale.t('users_appear'),
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
                       ),
                     ],
                   ),
@@ -401,7 +403,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                         ),
                       ),
                       subtitle: Text(
-                        lastMessage?.content ?? 'Tap to start a conversation',
+                        lastMessage?.content ?? locale.t('tap_to_start'),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
@@ -417,7 +419,6 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
                   },
                 ),
         ),
-        // New DM button
         Padding(
           padding: const EdgeInsets.all(16),
           child: SizedBox(
@@ -425,7 +426,7 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             child: FilledButton.icon(
               onPressed: _showNewDmDialog,
               icon: const Icon(Icons.add, size: 18),
-              label: const Text('New Direct Message'),
+              label: Text(locale.t('new_dm')),
             ),
           ),
         ),

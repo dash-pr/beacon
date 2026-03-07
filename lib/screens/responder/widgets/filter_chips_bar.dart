@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../providers/locale_provider.dart';
 
 class FilterChipsBar extends StatelessWidget {
   final String activeFilter;
@@ -12,22 +14,24 @@ class FilterChipsBar extends StatelessWidget {
     required this.onFilterChanged,
   });
 
-  static const _filters = {
-    'all': 'All',
-    'sos': 'SOS Only',
-    'urgent': 'Urgent+',
-    'hasLocation': 'Has Location',
-    'last30': 'Last 30 min',
-  };
-
   @override
   Widget build(BuildContext context) {
+    final locale = context.watch<LocaleProvider>();
+
+    final filters = {
+      'all': locale.t('all'),
+      'sos': locale.t('sos_only'),
+      'urgent': locale.t('urgent_plus'),
+      'hasLocation': locale.t('has_location'),
+      'last30': locale.t('last_30'),
+    };
+
     return SizedBox(
       height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 12),
-        children: _filters.entries.map((entry) {
+        children: filters.entries.map((entry) {
           final isActive = activeFilter == entry.key;
           return Padding(
             padding: const EdgeInsets.only(right: 8),

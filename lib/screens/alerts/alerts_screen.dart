@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../models/alert_model.dart';
+import '../../providers/locale_provider.dart';
 import '../../services/alerts/jalert_service.dart';
 import 'widgets/alert_card.dart';
 
@@ -30,9 +32,10 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final locale = context.watch<LocaleProvider>();
+
     return Column(
       children: [
-        // Language toggle
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           color: AppColors.surfaceLight,
@@ -40,9 +43,9 @@ class _AlertsScreenState extends State<AlertsScreen> {
             children: [
               const Icon(Icons.warning_amber, size: 18, color: AppColors.urgentOrange),
               const SizedBox(width: 8),
-              const Text(
-                'Disaster Alerts (J-Alert)',
-                style: TextStyle(
+              Text(
+                locale.t('disaster_alerts'),
+                style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.textPrimary,
                 ),
@@ -63,10 +66,23 @@ class _AlertsScreenState extends State<AlertsScreen> {
         ),
         Expanded(
           child: _alerts.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No alerts',
-                    style: TextStyle(color: AppColors.textMuted),
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.check_circle_outline, size: 48, color: AppColors.safeGreen),
+                      const SizedBox(height: 12),
+                      Text(
+                        locale.t('no_active_alerts'),
+                        style: const TextStyle(fontSize: 16, color: AppColors.textMuted),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        locale.t('alerts_appear'),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 12),
+                      ),
+                    ],
                   ),
                 )
               : ListView.builder(

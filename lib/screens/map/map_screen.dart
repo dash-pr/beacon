@@ -1,11 +1,17 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../models/shelter_model.dart';
 import '../../providers/forum_provider.dart';
+import '../../providers/locale_provider.dart';
+import '../../providers/mesh_provider.dart';
+import '../../providers/message_provider.dart';
 import '../../services/map/shelter_service.dart';
 
 enum MapStyle { topographic, standard }
@@ -23,17 +29,67 @@ class _MapScreenState extends State<MapScreen> {
   final MapController _mapController = MapController();
   MapStyle _mapStyle = MapStyle.topographic;
   bool _showForumMarkers = true;
+  LatLng? _currentLocation;
+  StreamSubscription<Position>? _locationSub;
+
+  // Niseko backcountry center
+  static const _niseko = LatLng(42.8604, 140.6874);
+  // Tokyo center
+  static const _tokyo = LatLng(35.6762, 139.6503);
 
   @override
   void initState() {
     super.initState();
     _loadShelters();
+    _startLocationTracking();
+  }
+
+  @override
+  void dispose() {
+    _locationSub?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _startLocationTracking() async {
+    try {
+      LocationPermission perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied ||
+          perm == LocationPermission.deniedForever) {
+        return;
+      }
+
+      final pos = await Geolocator.getCurrentPosition();
+      setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+
+      const locationSettings = LocationSettings(
+        accuracy: LocationAccuracy.high,
+        distanceFilter: 10,
+      );
+      _locationSub = Geolocator.getPositionStream(
+        locationSettings: locationSettings,
+      ).listen((pos) {
+        if (mounted) {
+          setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+        }
+      });
+    } catch (_) {
+      // Location not available
+    }
   }
 
   Future<void> _loadShelters() async {
     final shelters = await _shelterService.loadShelters();
     setState(() => _shelters = shelters);
   }
+
+  LatLng get _initialCenter =>
+      _mapStyle == MapStyle.topographic ? _niseko : _tokyo;
+
+  double get _initialZoom =>
+      _mapStyle == MapStyle.topographic ? 13.0 : 12.0;
 
   String get _tileUrl {
     switch (_mapStyle) {
@@ -53,6 +109,47 @@ class _MapScreenState extends State<MapScreen> {
     }
   }
 
+  void _sendSos(BuildContext context) {
+    final locale = context.read<LocaleProvider>();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(locale.t('sos_confirm')),
+        content: Text(locale.t('sos_confirm_body')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(locale.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              final meshProvider = context.read<MeshProvider>();
+              final messageProvider = context.read<MessageProvider>();
+              final locText = _currentLocation != null
+                  ? ' (${_currentLocation!.latitude.toStringAsFixed(5)}, ${_currentLocation!.longitude.toStringAsFixed(5)})'
+                  : '';
+              messageProvider.sendTextMessage(
+                'SOS — EMERGENCY — I need help at my current location$locText',
+                meshProvider.service,
+              );
+            },
+            style: FilledButton.styleFrom(backgroundColor: AppColors.sosRed),
+            child: Text(locale.t('send_sos')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _switchStyle(MapStyle style) {
+    setState(() => _mapStyle = style);
+    _mapController.move(
+      style == MapStyle.topographic ? _niseko : _tokyo,
+      style == MapStyle.topographic ? 13.0 : 12.0,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final forum = context.watch<ForumProvider>();
@@ -63,8 +160,8 @@ class _MapScreenState extends State<MapScreen> {
         FlutterMap(
           mapController: _mapController,
           options: MapOptions(
-            initialCenter: const LatLng(35.6762, 139.6503),
-            initialZoom: 12.0,
+            initialCenter: _initialCenter,
+            initialZoom: _initialZoom,
           ),
           children: [
             TileLayer(
@@ -72,20 +169,21 @@ class _MapScreenState extends State<MapScreen> {
               subdomains: _subdomains ?? const [],
               userAgentPackageName: 'com.beacon.app',
             ),
-            // Shelter markers
-            MarkerLayer(
-              markers: _shelters.map((shelter) {
-                return Marker(
-                  point: LatLng(shelter.lat, shelter.lng),
-                  width: 40,
-                  height: 40,
-                  child: GestureDetector(
-                    onTap: () => _showShelterInfo(shelter),
-                    child: _shelterIcon(shelter.type),
-                  ),
-                );
-              }).toList(),
-            ),
+            // Shelter markers (only in standard/map mode)
+            if (_mapStyle == MapStyle.standard)
+              MarkerLayer(
+                markers: _shelters.map((shelter) {
+                  return Marker(
+                    point: LatLng(shelter.lat, shelter.lng),
+                    width: 40,
+                    height: 40,
+                    child: GestureDetector(
+                      onTap: () => _showShelterInfo(shelter),
+                      child: _shelterIcon(shelter.type),
+                    ),
+                  );
+                }).toList(),
+              ),
             // Forum resource markers
             if (_showForumMarkers)
               MarkerLayer(
@@ -116,6 +214,31 @@ class _MapScreenState extends State<MapScreen> {
                     ),
                   );
                 }).toList(),
+              ),
+            // Current location marker
+            if (_currentLocation != null)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: _currentLocation!,
+                    width: 28,
+                    height: 28,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: Colors.white, width: 3),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withAlpha(100),
+                            blurRadius: 10,
+                            spreadRadius: 3,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
           ],
         ),
@@ -155,10 +278,15 @@ class _MapScreenState extends State<MapScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                _legendItem(Icons.home, AppColors.safeGreen, 'Shelter'),
-                _legendItem(Icons.local_hospital, AppColors.sosRed, 'Hospital'),
-                _legendItem(Icons.water_drop, AppColors.primary, 'Food/Water'),
-                _legendItem(Icons.people, AppColors.urgentOrange, 'Assembly'),
+                if (_mapStyle == MapStyle.topographic) ...[
+                  _legendItem(Icons.terrain, const Color(0xFF8B6914), 'Niseko Backcountry'),
+                  _legendItem(Icons.my_location, AppColors.primary, 'Your Location'),
+                ] else ...[
+                  _legendItem(Icons.home, AppColors.safeGreen, 'Shelter'),
+                  _legendItem(Icons.local_hospital, AppColors.sosRed, 'Hospital'),
+                  _legendItem(Icons.water_drop, AppColors.primary, 'Food/Water'),
+                  _legendItem(Icons.people, AppColors.urgentOrange, 'Assembly'),
+                ],
                 const Divider(height: 8),
                 GestureDetector(
                   onTap: () => setState(() => _showForumMarkers = !_showForumMarkers),
@@ -186,6 +314,40 @@ class _MapScreenState extends State<MapScreen> {
           ),
         ),
 
+        // SOS button (topo mode)
+        if (_mapStyle == MapStyle.topographic)
+          Positioned(
+            bottom: 80,
+            right: 16,
+            child: FloatingActionButton(
+              heroTag: 'map_sos',
+              backgroundColor: AppColors.sosRed,
+              onPressed: () => _sendSos(context),
+              child: const Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.emergency, color: Colors.white, size: 22),
+                  Text('SOS', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+          ),
+
+        // Center on my location button
+        if (_currentLocation != null)
+          Positioned(
+            bottom: _mapStyle == MapStyle.topographic ? 140 : 80,
+            right: 16,
+            child: FloatingActionButton.small(
+              heroTag: 'center_location',
+              backgroundColor: AppColors.surface,
+              onPressed: () {
+                _mapController.move(_currentLocation!, _mapController.camera.zoom);
+              },
+              child: const Icon(Icons.my_location, color: AppColors.primary, size: 20),
+            ),
+          ),
+
         // Info bar
         Positioned(
           bottom: 16,
@@ -201,13 +363,36 @@ class _MapScreenState extends State<MapScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${_shelters.length} shelters',
-                  style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
-                ),
-                if (_showForumMarkers)
+                if (_mapStyle == MapStyle.topographic)
+                  const Row(
+                    children: [
+                      Icon(Icons.terrain, size: 14, color: Color(0xFF8B6914)),
+                      SizedBox(width: 6),
+                      Text(
+                        'Niseko Backcountry',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  )
+                else
                   Text(
-                    '${forumReports.where((r) => r.lat != null).length} community reports',
+                    '${_shelters.length} shelters',
+                    style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                  ),
+                if (_currentLocation != null)
+                  Row(
+                    children: [
+                      const Icon(Icons.my_location, size: 12, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${_currentLocation!.latitude.toStringAsFixed(4)}, ${_currentLocation!.longitude.toStringAsFixed(4)}',
+                        style: const TextStyle(color: AppColors.textMuted, fontSize: 10),
+                      ),
+                    ],
+                  ),
+                if (_showForumMarkers && _mapStyle == MapStyle.standard)
+                  Text(
+                    '${forumReports.where((r) => r.lat != null).length} reports',
                     style: const TextStyle(color: AppColors.textSecondary, fontSize: 12),
                   ),
               ],
@@ -221,7 +406,7 @@ class _MapScreenState extends State<MapScreen> {
   Widget _mapStyleButton(String label, MapStyle style, IconData icon) {
     final selected = _mapStyle == style;
     return GestureDetector(
-      onTap: () => setState(() => _mapStyle = style),
+      onTap: () => _switchStyle(style),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
@@ -321,12 +506,12 @@ class _MapScreenState extends State<MapScreen> {
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Icon(Icons.category, size: 16, color: AppColors.textMuted),
+                  const Icon(Icons.category, size: 16, color: AppColors.textMuted),
                   const SizedBox(width: 6),
                   Text(shelter.type.replaceAll('_', ' ').toUpperCase(), style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   const Spacer(),
                   if (shelter.capacity != null) ...[
-                    Icon(Icons.groups, size: 16, color: AppColors.textMuted),
+                    const Icon(Icons.groups, size: 16, color: AppColors.textMuted),
                     const SizedBox(width: 6),
                     Text('Capacity: ${shelter.capacity}', style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
                   ],

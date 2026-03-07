@@ -45,9 +45,12 @@ class _BeaconAppState extends State<BeaconApp> {
         await _meshProvider.start();
         _messageProvider.init(_meshProvider.service);
         _connectivityProvider.setBleMeshActive(true);
+      } else {
+        _messageProvider.loadFromHive();
       }
     } catch (_) {
       // BLE not available (e.g. web)
+      _messageProvider.loadFromHive();
     }
     await _llmProvider.initialize();
   }

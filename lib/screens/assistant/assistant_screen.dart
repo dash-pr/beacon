@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../providers/llm_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/mesh_provider.dart';
 import '../../providers/message_provider.dart';
 import '../../services/ai/image_analysis_service.dart';
@@ -162,11 +163,12 @@ class _AssistantScreenState extends State<AssistantScreen> {
   void _sendToChat(String text) {
     final meshProvider = context.read<MeshProvider>();
     final messageProvider = context.read<MessageProvider>();
+    final locale = context.read<LocaleProvider>();
     messageProvider.sendTextMessage(text, meshProvider.service);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Sent to community chat'),
-        duration: Duration(seconds: 2),
+      SnackBar(
+        content: Text(locale.t('send_to_chat')),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
@@ -174,6 +176,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
   @override
   Widget build(BuildContext context) {
     final llm = context.watch<LlmProvider>();
+    final locale = context.watch<LocaleProvider>();
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
@@ -200,9 +203,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
                 child: const Icon(Icons.offline_bolt, size: 14, color: AppColors.safeGreen),
               ),
               const SizedBox(width: 8),
-              const Text(
-                'Offline AI — works without internet',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              Text(
+                locale.t('ai_assistant'),
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
               const Spacer(),
               if (_translationReady)
@@ -241,7 +244,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                                 child: TextButton.icon(
                                   onPressed: () => _sendToChat(msg.text),
                                   icon: const Icon(Icons.send, size: 14),
-                                  label: const Text('Send to chat', style: TextStyle(fontSize: 11)),
+                                  label: Text(locale.t('send_to_chat'), style: const TextStyle(fontSize: 11)),
                                   style: TextButton.styleFrom(
                                     foregroundColor: AppColors.textMuted,
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -270,14 +273,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 8),
             color: AppColors.primary.withAlpha(20),
-            child: const Row(
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.mic, size: 16, color: AppColors.primary),
-                SizedBox(width: 8),
+                const Icon(Icons.mic, size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
                 Text(
-                  'Listening... release to stop',
-                  style: TextStyle(fontSize: 12, color: AppColors.primary),
+                  locale.t('listening'),
+                  style: const TextStyle(fontSize: 12, color: AppColors.primary),
                 ),
               ],
             ),
@@ -301,7 +304,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   onPressed: _openCameraAndAnalyze,
                   icon: const Icon(Icons.camera_alt_outlined, size: 22),
                   color: AppColors.primary,
-                  tooltip: 'Take photo for analysis',
+                  tooltip: locale.t('take_photo'),
                 ),
                 // Voice input
                 GestureDetector(
@@ -338,8 +341,8 @@ class _AssistantScreenState extends State<AssistantScreen> {
                     controller: _controller,
                     textInputAction: TextInputAction.send,
                     onSubmitted: _ask,
-                    decoration: const InputDecoration(
-                      hintText: 'Ask about first aid, safety...',
+                    decoration: InputDecoration(
+                      hintText: locale.t('ask_anything'),
                       contentPadding:
                           EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                     ),
@@ -377,28 +380,28 @@ class _AssistantScreenState extends State<AssistantScreen> {
               child: const Icon(Icons.smart_toy, size: 40, color: AppColors.primary),
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Beacon AI Assistant',
-              style: TextStyle(
+            Text(
+              context.read<LocaleProvider>().t('ai_assistant'),
+              style: const TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'First aid & disaster guidance — fully offline',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+            Text(
+              context.read<LocaleProvider>().t('ask_anything'),
+              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
             const SizedBox(height: 8),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                _capabilityChip(Icons.camera_alt, 'Photo'),
+                _capabilityChip(Icons.camera_alt, context.read<LocaleProvider>().t('photo')),
                 const SizedBox(width: 8),
-                _capabilityChip(Icons.mic, 'Voice'),
+                _capabilityChip(Icons.mic, context.read<LocaleProvider>().t('voice')),
                 const SizedBox(width: 8),
-                _capabilityChip(Icons.translate, 'Translate'),
+                _capabilityChip(Icons.translate, context.read<LocaleProvider>().t('translate')),
               ],
             ),
             const SizedBox(height: 24),
