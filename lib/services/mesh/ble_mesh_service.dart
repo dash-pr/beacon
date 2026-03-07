@@ -19,6 +19,7 @@ class BleMeshService {
   final Map<String, BluetoothCharacteristic> _centralCharacteristics = {};
   final Set<String> _connectingDevices = {};
   bool _isRunning = false;
+  Timer? _rescanTimer;
 
   Stream<MessageModel> get onMessageReceived => _messageController.stream;
   int get connectedDeviceCount => _centralCharacteristics.length;
@@ -30,10 +31,16 @@ class BleMeshService {
 
     await _startPeripheral();
     await _startCentral();
+
+    // Periodic rescan — Android throttles BLE scans after ~30s
+    _rescanTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+      if (_isRunning) _restartScan();
+    });
   }
 
   Future<void> stop() async {
     _isRunning = false;
+    _rescanTimer?.cancel();
     try {
       await peripheral.BlePeripheral.stopAdvertising();
     } catch (_) {}
@@ -102,15 +109,18 @@ class BleMeshService {
     try {
       FlutterBluePlus.onScanResults.listen((results) {
         for (final result in results) {
+          // Match by service UUID OR by advertised name "Beacon"
           final serviceUuids = result.advertisementData.serviceUuids;
-          if (serviceUuids.any((uuid) => uuid.str == AppConfig.serviceUuid)) {
+          final name = result.advertisementData.advName;
+          if (serviceUuids.any((uuid) => uuid.str == AppConfig.serviceUuid) ||
+              name == 'Beacon') {
             _connectToPeripheral(result.device);
           }
         }
       });
 
+      // Scan without service UUID filter for broader discovery on Android
       await FlutterBluePlus.startScan(
-        withServices: [Guid(AppConfig.serviceUuid)],
         androidUsesFineLocation: false,
         continuousUpdates: true,
         removeIfGone: const Duration(seconds: 15),
@@ -118,6 +128,18 @@ class BleMeshService {
     } catch (e) {
       // Scan may fail if BLE is off
     }
+  }
+
+  Future<void> _restartScan() async {
+    try {
+      await FlutterBluePlus.stopScan();
+      await Future.delayed(const Duration(milliseconds: 500));
+      await FlutterBluePlus.startScan(
+        androidUsesFineLocation: false,
+        continuousUpdates: true,
+        removeIfGone: const Duration(seconds: 15),
+      );
+    } catch (_) {}
   }
 
   Future<void> _connectToPeripheral(BluetoothDevice device) async {
@@ -131,6 +153,11 @@ class BleMeshService {
         autoConnect: true,
         timeout: const Duration(seconds: 10),
       );
+
+      // Negotiate larger MTU — default 20 bytes is too small for JSON messages
+      try {
+        await device.requestMtu(512);
+      } catch (_) {}
 
       device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected) {
@@ -175,9 +202,15 @@ class BleMeshService {
     final failedDevices = <String>[];
     for (final entry in _centralCharacteristics.entries) {
       try {
-        await entry.value.write(jsonBytes, withoutResponse: true);
+        // Use write with response for reliability (handles MTU chunking internally)
+        await entry.value.write(jsonBytes, withoutResponse: false);
       } catch (_) {
-        failedDevices.add(entry.key);
+        // Retry without response as fallback
+        try {
+          await entry.value.write(jsonBytes, withoutResponse: true);
+        } catch (_) {
+          failedDevices.add(entry.key);
+        }
       }
     }
     for (final id in failedDevices) {
@@ -229,6 +262,7 @@ class BleMeshService {
   }
 
   void dispose() {
+    _rescanTimer?.cancel();
     _messageController.close();
   }
 }

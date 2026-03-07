@@ -73,14 +73,16 @@ class MessageProvider extends ChangeNotifier {
     // Add demo users to known users
     _knownUsers.addAll(_demoUsers);
 
-    final now = DateTime.now();
-    const uuid = Uuid();
+    // Use stable IDs so re-seeding doesn't duplicate
+    final existing = _messages.map((m) => m.id).toSet();
 
-    // Seed demo DM conversations
-    _messages.addAll([
+    final now = DateTime.now();
+
+    final demoMessages = <MessageModel>[
+      // === DM conversations ===
       // Tanaka — backcountry buddy
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-01',
         senderId: 'demo-tanaka',
         senderName: 'Tanaka Yuki',
         content: 'Hey, are you heading to the Niseko backcountry tomorrow?',
@@ -90,7 +92,7 @@ class MessageProvider extends ChangeNotifier {
         recipientId: app.deviceId,
       ),
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-02',
         senderId: app.deviceId,
         senderName: app.displayName,
         content: 'Yes! Planning to hit the east face. Avalanche report looks clear.',
@@ -100,7 +102,7 @@ class MessageProvider extends ChangeNotifier {
         recipientId: 'demo-tanaka',
       ),
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-03',
         senderId: 'demo-tanaka',
         senderName: 'Tanaka Yuki',
         content: 'Great, I\'ll bring the beacon and probe. Meet at the trailhead at 7am?',
@@ -111,7 +113,7 @@ class MessageProvider extends ChangeNotifier {
       ),
       // Sato — emergency coordination
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-04',
         senderId: 'demo-sato',
         senderName: 'Sato Kenji',
         content: 'The shelter at Minato City Hall is almost full. Can you check the one in Azabu?',
@@ -121,7 +123,7 @@ class MessageProvider extends ChangeNotifier {
         recipientId: app.deviceId,
       ),
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-05',
         senderId: app.deviceId,
         senderName: app.displayName,
         content: 'On my way there now. Will report back.',
@@ -131,7 +133,7 @@ class MessageProvider extends ChangeNotifier {
         recipientId: 'demo-sato',
       ),
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-06',
         senderId: 'demo-sato',
         senderName: 'Sato Kenji',
         content: 'Thanks. Water supply truck arriving at your location in 20 min.',
@@ -142,7 +144,7 @@ class MessageProvider extends ChangeNotifier {
       ),
       // Suzuki — medical
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-07',
         senderId: 'demo-suzuki',
         senderName: 'Suzuki Aoi',
         content: 'Do you have any first aid supplies? There\'s an injured person near the station.',
@@ -153,7 +155,7 @@ class MessageProvider extends ChangeNotifier {
       ),
       // Yamamoto — community update
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-08',
         senderId: 'demo-yamamoto',
         senderName: 'Yamamoto Hana',
         content: 'The gas leak in building 4 has been sealed. All clear to return.',
@@ -164,7 +166,7 @@ class MessageProvider extends ChangeNotifier {
       ),
       // Nakamura — gear check
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-09',
         senderId: 'demo-nakamura',
         senderName: 'Nakamura Ren',
         content: 'Do you still have that extra radio? Could use one for the rescue team.',
@@ -173,12 +175,9 @@ class MessageProvider extends ChangeNotifier {
         timestamp: now.subtract(const Duration(minutes: 15)),
         recipientId: app.deviceId,
       ),
-    ]);
-
-    // Seed some demo community messages
-    _messages.addAll([
+      // === Community broadcast messages ===
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-c1',
         senderId: 'demo-sato',
         senderName: 'Sato Kenji',
         content: 'Earthquake magnitude 6.2 reported. Everyone please check in.',
@@ -187,7 +186,7 @@ class MessageProvider extends ChangeNotifier {
         timestamp: now.subtract(const Duration(hours: 3)),
       ),
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-c2',
         senderId: 'demo-yamamoto',
         senderName: 'Yamamoto Hana',
         content: 'I\'m safe. Gas smell in our building though — evacuating now.',
@@ -196,7 +195,7 @@ class MessageProvider extends ChangeNotifier {
         timestamp: now.subtract(const Duration(hours: 2, minutes: 50)),
       ),
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-c3',
         senderId: 'demo-tanaka',
         senderName: 'Tanaka Yuki',
         content: 'All okay in Shibuya area. Some broken glass but no injuries nearby.',
@@ -205,7 +204,7 @@ class MessageProvider extends ChangeNotifier {
         timestamp: now.subtract(const Duration(hours: 2, minutes: 40)),
       ),
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-c4',
         senderId: 'demo-suzuki',
         senderName: 'Suzuki Aoi',
         content: 'Water distribution point set up at Shinjuku Central Park. Bring containers.',
@@ -214,7 +213,7 @@ class MessageProvider extends ChangeNotifier {
         timestamp: now.subtract(const Duration(hours: 1)),
       ),
       MessageModel(
-        id: uuid.v4(),
+        id: 'demo-msg-c5',
         senderId: 'demo-nakamura',
         senderName: 'Nakamura Ren',
         content: 'Road to Ueno is blocked. Use alternate route via Akihabara.',
@@ -222,7 +221,14 @@ class MessageProvider extends ChangeNotifier {
         priorityIndex: Priority.urgent.index,
         timestamp: now.subtract(const Duration(minutes: 40)),
       ),
-    ]);
+    ];
+
+    // Only add messages that aren't already present
+    for (final m in demoMessages) {
+      if (!existing.contains(m.id)) {
+        _messages.add(m);
+      }
+    }
 
     _messages.sort((a, b) => a.timestamp.compareTo(b.timestamp));
   }
