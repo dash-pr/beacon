@@ -72,7 +72,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
     {
       'icon': '📷',
       'label': 'Food Label (OCR)',
-      'query': '[Camera Analysis] Scene: indoor | Severity: low | Objects: food package, label, text | OCR text: "賞味期限 2024.10.15 品名：カップヌードル 日清食品"',
+      'query': '[Camera Analysis] Scene: indoor | Severity: low | Objects: food package, label, text | OCR text: "賞味期限 2023.10.09 品名：カップヌードル 日清食品"',
       'hasImage': 'true',
     },
   ];
@@ -295,14 +295,22 @@ class _AssistantScreenState extends State<AssistantScreen> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: AppColors.safeGreen.withAlpha(25),
+                  color: llm.gemmaAvailable
+                      ? AppColors.safeGreen.withAlpha(25)
+                      : AppColors.urgentOrange.withAlpha(25),
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: const Icon(Icons.offline_bolt, size: 14, color: AppColors.safeGreen),
+                child: Icon(
+                  llm.gemmaAvailable ? Icons.smart_toy : Icons.offline_bolt,
+                  size: 14,
+                  color: llm.gemmaAvailable ? AppColors.safeGreen : AppColors.urgentOrange,
+                ),
               ),
               const SizedBox(width: 8),
               Text(
-                locale.t('ai_assistant'),
+                llm.gemmaAvailable
+                    ? 'Gemma 3 1B (On-Device)'
+                    : locale.t('ai_assistant'),
                 style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
               const Spacer(),

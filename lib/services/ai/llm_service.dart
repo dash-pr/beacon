@@ -1,12 +1,17 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_gemma/flutter_gemma.dart';
 
 class LlmService {
   bool _isInitialized = false;
   String _systemPrompt = '';
+  bool _gemmaAvailable = false;
+  InferenceChat? _chat;
 
   bool get isInitialized => _isInitialized;
+  bool get gemmaAvailable => _gemmaAvailable;
   String get systemPrompt => _systemPrompt;
 
   Future<void> initialize() async {
@@ -15,23 +20,83 @@ class LlmService {
     } catch (_) {
       _systemPrompt = 'You are Beacon, an emergency first-aid assistant.';
     }
+
+    // Try to initialize Gemma on-device LLM
+    await _initGemma();
+
     _isInitialized = true;
   }
 
+  Future<void> _initGemma() async {
+    try {
+      await FlutterGemma.initialize();
+      if (FlutterGemma.hasActiveModel()) {
+        _gemmaAvailable = true;
+        debugPrint('[LLM] Gemma model found on device');
+      } else {
+        debugPrint('[LLM] No Gemma model installed — using offline responses');
+        _gemmaAvailable = false;
+      }
+    } catch (e) {
+      debugPrint('[LLM] Gemma init failed: $e — using offline responses');
+      _gemmaAvailable = false;
+    }
+  }
+
+  Future<InferenceChat?> _getOrCreateChat() async {
+    if (!_gemmaAvailable) return null;
+
+    try {
+      if (_chat != null) return _chat;
+
+      final model = await FlutterGemma.getActiveModel(maxTokens: 512);
+      _chat = await model.createChat(
+        temperature: 0.7,
+        topK: 40,
+        topP: 0.95,
+        tokenBuffer: 256,
+      );
+
+      // Seed with system prompt as a non-user message
+      await _chat!.addQuery(Message.text(text: _systemPrompt, isUser: false));
+
+      debugPrint('[LLM] Gemma chat session created');
+      return _chat;
+    } catch (e) {
+      debugPrint('[LLM] Failed to create Gemma chat: $e');
+      _chat = null;
+      return null;
+    }
+  }
+
   Stream<String> generateResponse(String prompt) async* {
-    // Always work — don't gate on initialization
     if (!_isInitialized) {
       await initialize();
     }
 
-    // Mock streaming response for build/compilation
-    // In production with real Android device, this would use flutter_gemma:
-    //   final model = await FlutterGemma.getActiveModel(maxTokens: 512);
-    //   final session = await model.createSession();
-    //   await session.addQueryChunk(Message.text(text: _systemPrompt, isUser: false));
-    //   await session.addQueryChunk(Message.text(text: prompt, isUser: true));
-    //   await for (var token in session.getResponseAsync()) { yield token; }
+    // Try real Gemma inference first
+    if (_gemmaAvailable) {
+      try {
+        final chat = await _getOrCreateChat();
+        if (chat != null) {
+          await chat.addQuery(Message.text(text: prompt, isUser: true));
+          bool hasYielded = false;
+          await for (final response in chat.generateChatResponseAsync()) {
+            if (response is TextResponse) {
+              hasYielded = true;
+              yield response.token;
+            }
+          }
+          if (hasYielded) return;
+          debugPrint('[LLM] Gemma returned empty response, falling back to offline');
+        }
+      } catch (e) {
+        debugPrint('[LLM] Gemma inference failed: $e — falling back to offline');
+        _chat = null;
+      }
+    }
 
+    // Fallback: offline pattern-matched responses
     final response = _getOfflineResponse(prompt);
     for (final word in response.split(' ')) {
       await Future.delayed(const Duration(milliseconds: 40));
@@ -73,12 +138,11 @@ class LlmService {
       if (ocrText.isNotEmpty) {
         final hasJaOcr = RegExp(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]').hasMatch(ocrText);
         if (hasJaOcr) {
-          // Provide specific translations for known demo scenarios
           if (ocrText.contains('賞味期限')) {
             return '📷 OCR Text Detected (Japanese):\n"$ocrText"\n\n'
                 '**Translation:**\n'
                 '• 賞味期限 = Best before date\n'
-                '• 2024.10.15 = October 15, 2024\n'
+                '• 2023.10.09 = October 9, 2023\n'
                 '• 品名 = Product name\n'
                 '• カップヌードル = Cup Noodle\n'
                 '• 日清食品 = Nissin Foods\n\n'
@@ -109,7 +173,6 @@ class LlmService {
             'I can help interpret it. What context do you need?';
       }
 
-      // Scene-based responses using actual detected objects
       if (lower.contains('fire')) {
         return hasJa
             ? '🔥 火災/煙の兆候を検出しました。\n\n• 直ちに避難してください\n• 鼻と口を布で覆ってください\n• 低い姿勢で移動してください\n• 119番に通報してください\n• ドアを触る前に温度を確認してください'
@@ -146,7 +209,6 @@ class LlmService {
             : '🚗 Vehicle/road scene analyzed.\n\n• Check for road obstructions\n• Inspect vehicle damage\n• Watch for fuel leaks\n• Move vehicle to safe location if possible';
       }
 
-      // Generic response with labels
       final labelsStr = RegExp(r'Objects: (.+?)(\||$)').firstMatch(prompt)?.group(1) ?? '';
       return hasJa
           ? '📷 画像を分析しました。検出: $labelsStr\n\n状況についてより詳しく教えてください。何が見えているか、どんな助けが必要かを説明してください。'

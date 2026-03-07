@@ -16,6 +16,7 @@ class LlmProvider extends ChangeNotifier {
   String get currentResponse => _currentResponse;
   bool get isGenerating => _isGenerating;
   bool get isInitialized => _isInitialized;
+  bool get gemmaAvailable => _service.gemmaAvailable;
 
   Future<void> initialize() async {
     await _service.initialize();
