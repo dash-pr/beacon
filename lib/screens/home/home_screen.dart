@@ -151,15 +151,27 @@ class _HomeScreenState extends State<HomeScreen> {
           if (conn.isSatellite)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              color: AppColors.primary.withAlpha(40),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0xFFFFD700).withAlpha(25),
+                    const Color(0xFFFFA500).withAlpha(15),
+                  ],
+                ),
+                border: Border(
+                  bottom: BorderSide(color: const Color(0xFFFFD700).withAlpha(40)),
+                ),
+              ),
               child: Row(
                 children: [
-                  const Icon(Icons.satellite_alt, size: 16, color: AppColors.info),
+                  const Icon(Icons.satellite_alt, size: 16, color: Color(0xFFFFD700)),
                   const SizedBox(width: 8),
+                  const Icon(Icons.workspace_premium, size: 14, color: Color(0xFFFFD700)),
+                  const SizedBox(width: 6),
                   const Expanded(
                     child: Text(
-                      'Starlink Satellite — low bandwidth, text messages only',
+                      'au Starlink Direct — satellite mode active, text only',
                       style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
                     ),
                   ),
@@ -243,7 +255,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case ConnectionMode.cellular:
         return AppColors.safeGreen;
       case ConnectionMode.satellite:
-        return AppColors.warningYellow;
+        return const Color(0xFFFFD700);
     }
   }
 
@@ -267,8 +279,28 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(conn.modeDescription, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
             const SizedBox(height: 20),
             SwitchListTile(
-              title: const Text('Simulate Satellite Mode', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
-              subtitle: const Text('Demo: simulate au Starlink Direct connection', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
+              title: Row(
+                children: [
+                  const Text('au Starlink Direct', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(colors: [Color(0xFFFFD700), Color(0xFFFFA500)]),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.workspace_premium, size: 10, color: Colors.black87),
+                        SizedBox(width: 2),
+                        Text('PRO', style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              subtitle: const Text('Satellite backup for areas with no cellular coverage', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               value: conn.isSatellite,
               onChanged: (_) => conn.toggleSatelliteMock(),
             ),

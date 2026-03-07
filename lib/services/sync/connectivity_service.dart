@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/services.dart';
 
 enum ConnectionMode {
   offline,
@@ -15,12 +16,15 @@ class ConnectivityService {
   factory ConnectivityService() => _instance;
   ConnectivityService._();
 
+  static const _platform = MethodChannel('com.beacon.app/satellite');
+
   final Connectivity _connectivity = Connectivity();
   final _modeController = StreamController<ConnectionMode>.broadcast();
   StreamSubscription? _subscription;
   ConnectionMode _currentMode = ConnectionMode.offline;
   bool _bleMeshActive = false;
   bool _satelliteMockMode = false;
+  Timer? _satellitePollTimer;
 
   ConnectionMode get currentMode => _currentMode;
   Stream<ConnectionMode> get onModeChanged => _modeController.stream;
@@ -36,7 +40,7 @@ class ConnectivityService {
     _updateMode();
   }
 
-  /// For demo: simulate satellite mode
+  /// Toggle satellite mode (mock or real detection)
   void setSatelliteMockMode(bool enabled) {
     _satelliteMockMode = enabled;
     _updateMode();
@@ -49,6 +53,35 @@ class ConnectivityService {
     _subscription = _connectivity.onConnectivityChanged.listen(
       _processResult,
     );
+
+    // Poll for real satellite mode every 5s on supported devices
+    _satellitePollTimer = Timer.periodic(
+      const Duration(seconds: 5),
+      (_) => _checkRealSatelliteMode(),
+    );
+  }
+
+  /// Check Android NetworkCapabilities for satellite transport.
+  /// NET_CAPABILITY_NOT_BANDWIDTH_CONSTRAINED (value 35) is defined in API 36.
+  /// On devices with API < 35, this is a no-op.
+  Future<void> _checkRealSatelliteMode() async {
+    if (_satelliteMockMode) return; // mock takes priority
+
+    try {
+      final isSatellite = await _platform.invokeMethod<bool>('isSatelliteMode');
+      if (isSatellite == true && _currentMode != ConnectionMode.satellite) {
+        _currentMode = ConnectionMode.satellite;
+        _modeController.add(_currentMode);
+      } else if (isSatellite == false && _currentMode == ConnectionMode.satellite && !_satelliteMockMode) {
+        // Re-evaluate based on normal connectivity
+        final result = await _connectivity.checkConnectivity();
+        _processResult(result);
+      }
+    } on PlatformException {
+      // Platform channel not available (web, or method not implemented)
+    } on MissingPluginException {
+      // Expected on non-Android platforms
+    }
   }
 
   void _processResult(ConnectivityResult result) {
@@ -61,9 +94,6 @@ class ConnectivityService {
     if (result == ConnectivityResult.wifi) {
       _currentMode = ConnectionMode.wifi;
     } else if (result == ConnectivityResult.mobile) {
-      // Android satellite mode reports as mobile with limited connectivity.
-      // In a real implementation, we'd check NetworkCapabilities for
-      // NET_CAPABILITY_NOT_METERED and satellite transport type.
       _currentMode = ConnectionMode.cellular;
     } else if (_bleMeshActive) {
       _currentMode = ConnectionMode.bleMeshOnly;
@@ -93,7 +123,7 @@ class ConnectivityService {
       case ConnectionMode.cellular:
         return 'Cellular';
       case ConnectionMode.satellite:
-        return 'Satellite';
+        return 'Starlink';
     }
   }
 
@@ -108,12 +138,13 @@ class ConnectivityService {
       case ConnectionMode.cellular:
         return 'Cellular — cloud sync active';
       case ConnectionMode.satellite:
-        return 'Starlink satellite — low bandwidth, text only';
+        return 'au Starlink Direct — low bandwidth satellite connection. Text messages only, images disabled.';
     }
   }
 
   void dispose() {
     _subscription?.cancel();
+    _satellitePollTimer?.cancel();
     _modeController.close();
   }
 }

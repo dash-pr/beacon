@@ -32,6 +32,11 @@
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
+        <!-- au Starlink Direct satellite data communication support -->
+        <meta-data
+            android:name="com.google.android.gms.SATELLITE_DATA_MODE"
+            android:value="true" />
+
         <!-- GPU acceleration for flutter_gemma -->
         <uses-library android:name="libOpenCL.so" android:required="false" />
         <uses-library android:name="libOpenCL-car.so" android:required="false" />
