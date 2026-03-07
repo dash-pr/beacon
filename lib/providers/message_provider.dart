@@ -272,6 +272,8 @@ class MessageProvider extends ChangeNotifier {
     String content,
     BleMeshService meshService, {
     String? recipientId,
+    double? lat,
+    double? lng,
   }) async {
     final priority = SosDetector.detectPriority(content);
     final message = MessageModel(
@@ -285,6 +287,8 @@ class MessageProvider extends ChangeNotifier {
       priorityIndex: priority.index,
       timestamp: DateTime.now(),
       recipientId: recipientId,
+      lat: lat,
+      lng: lng,
     );
 
     _messages.add(message);

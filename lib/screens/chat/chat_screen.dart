@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
@@ -90,7 +91,27 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
     setState(() => _isListening = false);
   }
 
-  void _sendSos() {
+  void _sendSos() async {
+    // Try to get current location for the SOS
+    double? lat, lng;
+    try {
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 5),
+      );
+      lat = pos.latitude;
+      lng = pos.longitude;
+    } catch (_) {
+      try {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null) {
+          lat = lastPos.latitude;
+          lng = lastPos.longitude;
+        }
+      } catch (_) {}
+    }
+
+    if (!mounted) return;
     final locale = context.read<LocaleProvider>();
     showDialog(
       context: context,
@@ -107,9 +128,14 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
               Navigator.pop(ctx);
               final meshProvider = context.read<MeshProvider>();
               final messageProvider = context.read<MessageProvider>();
+              final locText = lat != null
+                  ? ' (${lat.toStringAsFixed(5)}, ${lng!.toStringAsFixed(5)})'
+                  : '';
               messageProvider.sendTextMessage(
-                'SOS — EMERGENCY — I need help at my current location',
+                'SOS — EMERGENCY — I need help at my current location$locText',
                 meshProvider.service,
+                lat: lat,
+                lng: lng,
               );
             },
             style: FilledButton.styleFrom(backgroundColor: AppColors.sosRed),

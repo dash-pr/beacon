@@ -54,7 +54,13 @@ class _MapScreenState extends State<MapScreen> {
     try {
       // Check if location services are enabled
       final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return;
+      if (!serviceEnabled) {
+        // Emulator or no GPS — use map center as fallback
+        if (mounted) {
+          setState(() => _currentLocation = _initialCenter);
+        }
+        return;
+      }
 
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
@@ -62,16 +68,31 @@ class _MapScreenState extends State<MapScreen> {
       }
       if (perm == LocationPermission.denied ||
           perm == LocationPermission.deniedForever) {
+        // Permission denied — use map center as fallback
+        if (mounted) {
+          setState(() => _currentLocation = _initialCenter);
+        }
         return;
       }
 
       // Get initial position with timeout
-      final pos = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 10),
-      );
-      if (mounted) {
-        setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+      try {
+        final pos = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+          timeLimit: const Duration(seconds: 10),
+        );
+        if (mounted) {
+          setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+        }
+      } catch (_) {
+        // getCurrentPosition timed out — try last known
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null && mounted) {
+          setState(() => _currentLocation = LatLng(lastPos.latitude, lastPos.longitude));
+        } else if (mounted) {
+          // No last known — use map center
+          setState(() => _currentLocation = _initialCenter);
+        }
       }
 
       // Stream updates
@@ -86,13 +107,10 @@ class _MapScreenState extends State<MapScreen> {
         }
       });
     } catch (e) {
-      // Try last known position as fallback
-      try {
-        final lastPos = await Geolocator.getLastKnownPosition();
-        if (lastPos != null && mounted) {
-          setState(() => _currentLocation = LatLng(lastPos.latitude, lastPos.longitude));
-        }
-      } catch (_) {}
+      // Any error — use map center as fallback so the dot always shows
+      if (mounted) {
+        setState(() => _currentLocation = _initialCenter);
+      }
     }
   }
 
@@ -148,6 +166,8 @@ class _MapScreenState extends State<MapScreen> {
               messageProvider.sendTextMessage(
                 'SOS — EMERGENCY — I need help at my current location$locText',
                 meshProvider.service,
+                lat: _currentLocation?.latitude,
+                lng: _currentLocation?.longitude,
               );
             },
             style: FilledButton.styleFrom(backgroundColor: AppColors.sosRed),

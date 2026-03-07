@@ -42,6 +42,35 @@ class _AssistantScreenState extends State<AssistantScreen> {
     'Altitude sickness help',
   ];
 
+  // Demo image analysis scenarios (simulate camera AI on devices without camera)
+  static const _imageScenarios = [
+    {
+      'icon': '🔥',
+      'label': 'Fire / Smoke',
+      'query': '[Camera Analysis] Scene: fire | Severity: high | Objects: smoke, flames, building, debris',
+    },
+    {
+      'icon': '🏚️',
+      'label': 'Building Damage',
+      'query': '[Camera Analysis] Scene: structural | Severity: high | Objects: collapsed wall, rubble, concrete, rebar',
+    },
+    {
+      'icon': '🩹',
+      'label': 'Injury / Medical',
+      'query': '[Camera Analysis] Scene: medical | Severity: medium | Objects: person, bandage, first aid kit, wound',
+    },
+    {
+      'icon': '🌊',
+      'label': 'Flooding',
+      'query': '[Camera Analysis] Scene: flood | Severity: high | Objects: water, submerged car, road, debris',
+    },
+    {
+      'icon': '📋',
+      'label': 'Japanese Sign (OCR)',
+      'query': '[Camera Analysis] Scene: outdoor | Severity: low | Objects: sign, pole | OCR text: "避難所 この先200m 右折 — 港区防災センター"',
+    },
+  ];
+
   @override
   void initState() {
     super.initState();
@@ -376,59 +405,128 @@ class _AssistantScreenState extends State<AssistantScreen> {
   }
 
   Widget _buildSuggestions() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withAlpha(20),
-                shape: BoxShape.circle,
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(20),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.smart_toy, size: 40, color: AppColors.primary),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            context.read<LocaleProvider>().t('ai_assistant'),
+            style: const TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            context.read<LocaleProvider>().t('ask_anything'),
+            style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _capabilityChip(Icons.camera_alt, context.read<LocaleProvider>().t('photo')),
+              const SizedBox(width: 8),
+              _capabilityChip(Icons.mic, context.read<LocaleProvider>().t('voice')),
+              const SizedBox(width: 8),
+              _capabilityChip(Icons.translate, context.read<LocaleProvider>().t('translate')),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // Image analysis demo scenarios
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.camera_alt, size: 14, color: AppColors.textMuted),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Image Analysis Demo',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ),
-              child: const Icon(Icons.smart_toy, size: 40, color: AppColors.primary),
             ),
-            const SizedBox(height: 16),
-            Text(
-              context.read<LocaleProvider>().t('ai_assistant'),
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.read<LocaleProvider>().t('ask_anything'),
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _capabilityChip(Icons.camera_alt, context.read<LocaleProvider>().t('photo')),
-                const SizedBox(width: 8),
-                _capabilityChip(Icons.mic, context.read<LocaleProvider>().t('voice')),
-                const SizedBox(width: 8),
-                _capabilityChip(Icons.translate, context.read<LocaleProvider>().t('translate')),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: _suggestions.map((s) {
-                return ActionChip(
-                  label: Text(s, style: const TextStyle(fontSize: 12)),
-                  onPressed: () => _ask(s),
+          ),
+          SizedBox(
+            height: 72,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _imageScenarios.length,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final scenario = _imageScenarios[index];
+                return GestureDetector(
+                  onTap: () => _ask(scenario['query']!),
+                  child: Container(
+                    width: 100,
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceContainer,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.outline.withAlpha(60)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(scenario['icon']!, style: const TextStyle(fontSize: 22)),
+                        const SizedBox(height: 4),
+                        Text(
+                          scenario['label']!,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
                 );
-              }).toList(),
+              },
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 20),
+          // Text question suggestions
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 4, bottom: 8),
+              child: Row(
+                children: [
+                  const Icon(Icons.chat_bubble_outline, size: 14, color: AppColors.textMuted),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Ask a Question',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted, fontWeight: FontWeight.w600),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: _suggestions.map((s) {
+              return ActionChip(
+                label: Text(s, style: const TextStyle(fontSize: 12)),
+                onPressed: () => _ask(s),
+              );
+            }).toList(),
+          ),
+        ],
       ),
     );
   }
