@@ -25,7 +25,7 @@ dependencies:
   google_mlkit_translation: ^0.13.1
 
   # Voice to Text (on-device)
-  speech_to_text: ^6.6.0
+  speech_to_text: ^7.3.0
 
   # Local Storage
   hive: ^2.2.3
