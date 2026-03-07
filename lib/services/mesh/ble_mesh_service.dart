@@ -179,6 +179,7 @@ class BleMeshService {
   // === CENTRAL ROLE (flutter_blue_plus) ===
   Future<void> _startCentral() async {
     try {
+      int _scanResultCount = 0;
       FlutterBluePlus.onScanResults.listen((results) {
         for (final result in results) {
           final serviceUuids = result.advertisementData.serviceUuids;
@@ -186,40 +187,32 @@ class BleMeshService {
           final matchesService = serviceUuids.any(
             (uuid) => uuid.str.toLowerCase() == AppConfig.serviceUuid.toLowerCase(),
           );
-          final matchesName = name == 'Beacon';
+          final matchesName = name.contains('Beacon');
+
+          // Log every 10th non-matching device for debug visibility
+          _scanResultCount++;
+          if (_scanResultCount <= 5 || _scanResultCount % 20 == 0) {
+            final svcStrs = serviceUuids.map((u) => u.str).join(',');
+            _log('Scan#$_scanResultCount: name="$name" svc=[$svcStrs] rssi=${result.rssi}');
+          }
 
           if (matchesService || matchesName) {
-            _log('Found: ${result.device.remoteId.str.substring(0, 8)}... name=$name rssi=${result.rssi} svc=$matchesService');
+            _log('MATCH: ${result.device.remoteId.str.substring(0, 8)}... name=$name rssi=${result.rssi} svc=$matchesService');
             _connectToPeripheral(result.device);
           }
         }
       });
 
-      // Scan with service UUID filter for better Android discovery
-      // Also use timeout-based scanning instead of continuousUpdates
+      // Broad scan — no UUID filter because Android 31-byte advertisement
+      // packets may drop the 128-bit service UUID when localName is included.
+      // We filter by name "Beacon" in the callback above.
       await FlutterBluePlus.startScan(
-        withServices: [Guid(AppConfig.serviceUuid)],
         androidUsesFineLocation: true,
-        timeout: const Duration(seconds: 25),
+        continuousUpdates: true,
+        removeIfGone: const Duration(seconds: 30),
       );
       _isScanning = true;
-      _log('Scan started (UUID filter)');
-
-      // Also do a broad scan to catch devices that advertise by name only
-      Future.delayed(const Duration(seconds: 3), () async {
-        if (!_isRunning) return;
-        try {
-          await FlutterBluePlus.stopScan();
-          await Future.delayed(const Duration(milliseconds: 300));
-          await FlutterBluePlus.startScan(
-            androidUsesFineLocation: true,
-            timeout: const Duration(seconds: 20),
-          );
-          _log('Broad scan started');
-        } catch (e) {
-          _log('Broad scan error: $e');
-        }
-      });
+      _log('Scan started (broad, continuous)');
     } catch (e) {
       _log('Central scan error: $e');
     }
@@ -229,16 +222,15 @@ class BleMeshService {
     try {
       await FlutterBluePlus.stopScan();
       _isScanning = false;
-      await Future.delayed(const Duration(milliseconds: 500));
+      await Future.delayed(const Duration(seconds: 1));
 
-      // Alternate between UUID-filtered and broad scans
       await FlutterBluePlus.startScan(
-        withServices: [Guid(AppConfig.serviceUuid)],
         androidUsesFineLocation: true,
-        timeout: const Duration(seconds: 25),
+        continuousUpdates: true,
+        removeIfGone: const Duration(seconds: 30),
       );
       _isScanning = true;
-      _log('Scan restarted (UUID filter)');
+      _log('Scan restarted');
     } catch (e) {
       _log('Rescan error: $e');
     }
