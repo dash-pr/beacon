@@ -1,0 +1,17 @@
+[
+  {"id": "1", "name": "Shinjuku Central Park Shelter", "nameJa": "新宿中央公園避難所", "lat": 35.6938, "lng": 139.6917, "type": "shelter", "capacity": 500, "isVerified": true, "isOpen": true},
+  {"id": "2", "name": "Tokyo Metropolitan Government", "nameJa": "東京都庁", "lat": 35.6896, "lng": 139.6922, "type": "assembly_point", "capacity": 2000, "isVerified": true, "isOpen": true},
+  {"id": "3", "name": "Ueno Park Emergency Shelter", "nameJa": "上野公園避難所", "lat": 35.7146, "lng": 139.7732, "type": "shelter", "capacity": 3000, "isVerified": true, "isOpen": true},
+  {"id": "4", "name": "Yoyogi Park Shelter", "nameJa": "代々木公園避難所", "lat": 35.6715, "lng": 139.6950, "type": "shelter", "capacity": 2500, "isVerified": true, "isOpen": true},
+  {"id": "5", "name": "Shibuya Station Medical Center", "nameJa": "渋谷駅医療センター", "lat": 35.6580, "lng": 139.7016, "type": "hospital", "capacity": 200, "isVerified": true, "isOpen": true},
+  {"id": "6", "name": "Sumida Park Shelter", "nameJa": "隅田公園避難所", "lat": 35.7137, "lng": 139.8018, "type": "shelter", "capacity": 1500, "isVerified": true, "isOpen": true},
+  {"id": "7", "name": "Hibiya Park Emergency Shelter", "nameJa": "日比谷公園避難所", "lat": 35.6739, "lng": 139.7567, "type": "shelter", "capacity": 1200, "isVerified": true, "isOpen": true},
+  {"id": "8", "name": "Shiba Park Shelter", "nameJa": "芝公園避難所", "lat": 35.6544, "lng": 139.7513, "type": "shelter", "capacity": 800, "isVerified": true, "isOpen": true},
+  {"id": "9", "name": "Shinagawa Food Distribution", "nameJa": "品川食料配布所", "lat": 35.6284, "lng": 139.7387, "type": "food_water", "capacity": 600, "isVerified": true, "isOpen": true},
+  {"id": "10", "name": "Ikebukuro Disaster Prevention Park", "nameJa": "池袋防災公園", "lat": 35.7295, "lng": 139.7109, "type": "assembly_point", "capacity": 1800, "isVerified": true, "isOpen": true},
+  {"id": "11", "name": "Roppongi Hills Emergency Center", "nameJa": "六本木ヒルズ防災センター", "lat": 35.6605, "lng": 139.7292, "type": "shelter", "capacity": 1000, "isVerified": true, "isOpen": true},
+  {"id": "12", "name": "Asakusa Water Station", "nameJa": "浅草給水所", "lat": 35.7116, "lng": 139.7966, "type": "food_water", "capacity": 400, "isVerified": true, "isOpen": true},
+  {"id": "13", "name": "Odaiba Emergency Medical Facility", "nameJa": "お台場緊急医療施設", "lat": 35.6265, "lng": 139.7753, "type": "hospital", "capacity": 150, "isVerified": true, "isOpen": true},
+  {"id": "14", "name": "Meiji Shrine Assembly Point", "nameJa": "明治神宮集合場所", "lat": 35.6764, "lng": 139.6993, "type": "assembly_point", "capacity": 5000, "isVerified": true, "isOpen": true},
+  {"id": "15", "name": "Kinshi Park Shelter", "nameJa": "錦糸公園避難所", "lat": 35.6955, "lng": 139.8135, "type": "shelter", "capacity": 900, "isVerified": true, "isOpen": true}
+]
