@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/mesh_provider.dart';
 import '../../providers/message_provider.dart';
 import '../../services/ai/voice_service.dart';
 import '../camera/camera_screen.dart';
 import 'dm_screen.dart';
 import 'widgets/message_bubble.dart';
-import 'widgets/sos_banner.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -88,6 +88,36 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   void _stopListening() async {
     await _voiceService.stopListening();
     setState(() => _isListening = false);
+  }
+
+  void _sendSos() {
+    final locale = context.read<LocaleProvider>();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(locale.t('sos_confirm')),
+        content: Text(locale.t('sos_confirm_body')),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(locale.t('cancel')),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              final meshProvider = context.read<MeshProvider>();
+              final messageProvider = context.read<MessageProvider>();
+              messageProvider.sendTextMessage(
+                'SOS — EMERGENCY — I need help at my current location',
+                meshProvider.service,
+              );
+            },
+            style: FilledButton.styleFrom(backgroundColor: AppColors.sosRed),
+            child: Text(locale.t('send_sos')),
+          ),
+        ],
+      ),
+    );
   }
 
   void _openCamera() {
@@ -192,13 +222,11 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
   Widget _buildCommunityTab() {
     final messageProvider = context.watch<MessageProvider>();
     final messages = messageProvider.communityMessages;
-    final latestSos = messageProvider.latestSos;
 
     WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
 
     return Column(
       children: [
-        if (latestSos != null) SosBanner(message: latestSos),
         Expanded(
           child: messages.isEmpty
               ? const Center(
@@ -250,6 +278,26 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
             top: false,
             child: Row(
               children: [
+                // SOS button
+                GestureDetector(
+                  onTap: _sendSos,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.sosRed,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      'SOS',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
                 IconButton(
                   onPressed: _openCamera,
                   icon: const Icon(Icons.camera_alt_outlined, size: 22),

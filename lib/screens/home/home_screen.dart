@@ -3,12 +3,14 @@ import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../providers/connectivity_provider.dart';
+import '../../providers/locale_provider.dart';
 import '../../providers/mesh_provider.dart';
 import '../../providers/safety_check_provider.dart';
 import '../../services/sync/connectivity_service.dart';
 import '../alerts/alerts_screen.dart';
 import '../assistant/assistant_screen.dart';
 import '../chat/chat_screen.dart';
+import '../forum/forum_screen.dart';
 import '../map/map_screen.dart';
 import '../responder/responder_dashboard_screen.dart';
 import 'widgets/safety_check_banner.dart';
@@ -27,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const ChatScreen(),
     const AssistantScreen(),
     const MapScreen(),
+    const ForumScreen(),
     const AlertsScreen(),
     const ResponderDashboardScreen(),
   ];
@@ -35,21 +38,47 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final mesh = context.watch<MeshProvider>();
     final conn = context.watch<ConnectivityProvider>();
+    final locale = context.watch<LocaleProvider>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
-          children: [
-            Text(
-              'Beacon',
-              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
-            ),
-          ],
-        ),
+        title: const Text('Beacon'),
         actions: [
+          // Language switcher
+          PopupMenuButton<AppLanguage>(
+            icon: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: AppColors.outline),
+              ),
+              child: Text(
+                locale.language.shortCode,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+            ),
+            onSelected: (lang) => locale.setLanguage(lang),
+            itemBuilder: (_) => AppLanguage.values.map((lang) {
+              final selected = locale.language == lang;
+              return PopupMenuItem(
+                value: lang,
+                child: Row(
+                  children: [
+                    Text(lang.nativeName, style: TextStyle(
+                      fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+                      color: selected ? AppColors.primary : AppColors.textPrimary,
+                    )),
+                    const Spacer(),
+                    if (selected)
+                      const Icon(Icons.check, size: 16, color: AppColors.primary),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
           IconButton(
             icon: const Icon(Icons.health_and_safety, size: 22),
-            tooltip: 'Safety Check',
+            tooltip: locale.t('safety_check'),
             onPressed: () {
               final safety = context.read<SafetyCheckProvider>();
               if (safety.isActive) {
@@ -119,15 +148,14 @@ class _HomeScreenState extends State<HomeScreen> {
       body: Column(
         children: [
           const SafetyCheckBanner(),
-          // Satellite mode banner
           if (conn.isSatellite)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              color: AppColors.accent.withAlpha(40),
+              color: AppColors.primary.withAlpha(40),
               child: Row(
                 children: [
-                  const Icon(Icons.satellite_alt, size: 16, color: AppColors.accentLight),
+                  const Icon(Icons.satellite_alt, size: 16, color: AppColors.info),
                   const SizedBox(width: 8),
                   const Expanded(
                     child: Text(
@@ -153,31 +181,36 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _currentIndex,
         onDestinationSelected: (index) => setState(() => _currentIndex = index),
-        destinations: const [
+        destinations: [
           NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
-            label: 'Chat',
+            icon: const Icon(Icons.chat_bubble_outline),
+            selectedIcon: const Icon(Icons.chat_bubble),
+            label: locale.t('chat'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.smart_toy_outlined),
-            selectedIcon: Icon(Icons.smart_toy),
-            label: 'Assistant',
+            icon: const Icon(Icons.smart_toy_outlined),
+            selectedIcon: const Icon(Icons.smart_toy),
+            label: locale.t('assistant'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.map_outlined),
-            selectedIcon: Icon(Icons.map),
-            label: 'Map',
+            icon: const Icon(Icons.map_outlined),
+            selectedIcon: const Icon(Icons.map),
+            label: locale.t('map'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.warning_amber_outlined),
-            selectedIcon: Icon(Icons.warning_amber),
-            label: 'Alerts',
+            icon: const Icon(Icons.forum_outlined),
+            selectedIcon: const Icon(Icons.forum),
+            label: locale.t('forum'),
           ),
           NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Responder',
+            icon: const Icon(Icons.warning_amber_outlined),
+            selectedIcon: const Icon(Icons.warning_amber),
+            label: locale.t('alerts'),
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.dashboard_outlined),
+            selectedIcon: const Icon(Icons.dashboard),
+            label: locale.t('responder'),
           ),
         ],
       ),
@@ -204,7 +237,7 @@ class _HomeScreenState extends State<HomeScreen> {
       case ConnectionMode.offline:
         return AppColors.textMuted;
       case ConnectionMode.bleMeshOnly:
-        return AppColors.accent;
+        return AppColors.primary;
       case ConnectionMode.wifi:
         return AppColors.safeGreen;
       case ConnectionMode.cellular:
@@ -217,10 +250,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showConnectionInfo(BuildContext context, ConnectivityProvider conn) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -229,55 +258,22 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             Row(
               children: [
-                Icon(
-                  _connectionIcon(conn.mode),
-                  size: 24,
-                  color: _connectionColor(conn.mode),
-                ),
+                Icon(_connectionIcon(conn.mode), size: 24, color: _connectionColor(conn.mode)),
                 const SizedBox(width: 12),
-                Text(
-                  conn.modeLabel,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
+                Text(conn.modeLabel, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
               ],
             ),
             const SizedBox(height: 12),
-            Text(
-              conn.modeDescription,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontSize: 14,
-              ),
-            ),
+            Text(conn.modeDescription, style: const TextStyle(color: AppColors.textSecondary, fontSize: 14)),
             const SizedBox(height: 20),
-            // Satellite mock toggle for demo
             SwitchListTile(
-              title: const Text(
-                'Simulate Satellite Mode',
-                style: TextStyle(color: AppColors.textPrimary, fontSize: 14),
-              ),
-              subtitle: const Text(
-                'Demo: simulate au Starlink Direct connection',
-                style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-              ),
+              title: const Text('Simulate Satellite Mode', style: TextStyle(color: AppColors.textPrimary, fontSize: 14)),
+              subtitle: const Text('Demo: simulate au Starlink Direct connection', style: TextStyle(color: AppColors.textMuted, fontSize: 12)),
               value: conn.isSatellite,
-              activeTrackColor: AppColors.warningYellow.withAlpha(100),
               onChanged: (_) => conn.toggleSatelliteMock(),
             ),
             const SizedBox(height: 12),
-            // Connection layers info
-            const Text(
-              'Communication Layers',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-                fontSize: 13,
-              ),
-            ),
+            const Text('Communication Layers', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary, fontSize: 13)),
             const SizedBox(height: 8),
             _connectionLayer(Icons.bluetooth, 'BLE Mesh', 'P2P, ~50m range, relay via nearby devices'),
             _connectionLayer(Icons.satellite_alt, 'Starlink Satellite', 'Backup for mountains/remote areas'),
@@ -294,7 +290,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Icon(icon, size: 16, color: AppColors.accent),
+          Icon(icon, size: 16, color: AppColors.primary),
           const SizedBox(width: 10),
           Expanded(
             child: Column(

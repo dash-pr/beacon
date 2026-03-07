@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/permission_helper.dart';
 import 'providers/connectivity_provider.dart';
+import 'providers/forum_provider.dart';
 import 'providers/llm_provider.dart';
+import 'providers/locale_provider.dart';
 import 'providers/message_provider.dart';
 import 'providers/mesh_provider.dart';
 import 'providers/responder_provider.dart';
@@ -25,6 +27,8 @@ class _BeaconAppState extends State<BeaconApp> {
   final _llmProvider = LlmProvider();
   final _responderProvider = ResponderProvider();
   final _connectivityProvider = ConnectivityProvider();
+  final _localeProvider = LocaleProvider();
+  final _forumProvider = ForumProvider();
 
   @override
   void initState() {
@@ -56,6 +60,7 @@ class _BeaconAppState extends State<BeaconApp> {
     _llmProvider.dispose();
     _responderProvider.dispose();
     _connectivityProvider.dispose();
+    _forumProvider.dispose();
     super.dispose();
   }
 
@@ -69,6 +74,8 @@ class _BeaconAppState extends State<BeaconApp> {
         ChangeNotifierProvider.value(value: _llmProvider),
         ChangeNotifierProvider.value(value: _responderProvider),
         ChangeNotifierProvider.value(value: _connectivityProvider),
+        ChangeNotifierProvider.value(value: _localeProvider),
+        ChangeNotifierProvider.value(value: _forumProvider),
       ],
       child: MaterialApp(
         title: 'Beacon',
