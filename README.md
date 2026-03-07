@@ -4,6 +4,10 @@ Offline-first BLE mesh disaster communication app with on-device AI, triage assi
 
 Two Android phones can communicate via Bluetooth Low Energy (BLE) without any internet connection. When connectivity is restored, messages sync to the cloud.
 
+## Live Demo
+
+**[Web UI Demo](https://web-sooty-tau-95.vercel.app)** — browse the full app interface in your browser. This is a UI-only preview; BLE mesh, camera, AI, and voice features require the Android APK on a physical device.
+
 ## Download APK
 
 Download the latest pre-built APK from [GitHub Releases](https://github.com/dash-pr/beacon/releases/latest).
