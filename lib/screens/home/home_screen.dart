@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../main.dart' as app;
 import '../../providers/connectivity_provider.dart';
 import '../../providers/locale_provider.dart';
 import '../../providers/mesh_provider.dart';
@@ -122,25 +123,31 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          // Device count
-          Container(
-            margin: const EdgeInsets.only(right: 12),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.circle,
-                  size: 8,
-                  color: mesh.isRunning
-                      ? AppColors.safeGreen
-                      : AppColors.textMuted,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  '${mesh.connectedDeviceCount}',
-                  style: const TextStyle(fontSize: 13),
-                ),
-                const Icon(Icons.devices, size: 14),
-              ],
+          // Device count — tap for BLE debug log
+          GestureDetector(
+            onTap: () => _showBleDebug(context, mesh),
+            child: Container(
+              margin: const EdgeInsets.only(right: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    size: 8,
+                    color: mesh.connectedDeviceCount > 0
+                        ? AppColors.safeGreen
+                        : mesh.isRunning
+                            ? Colors.orange
+                            : AppColors.textMuted,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${mesh.connectedDeviceCount}',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  const Icon(Icons.devices, size: 14),
+                ],
+              ),
             ),
           ),
         ],
@@ -257,6 +264,101 @@ class _HomeScreenState extends State<HomeScreen> {
       case ConnectionMode.satellite:
         return const Color(0xFFFFD700);
     }
+  }
+
+  void _showBleDebug(BuildContext context, MeshProvider mesh) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        maxChildSize: 0.9,
+        minChildSize: 0.3,
+        expand: false,
+        builder: (_, scrollController) => Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.bluetooth, size: 20, color: AppColors.primary),
+                  const SizedBox(width: 8),
+                  const Text('BLE Mesh Debug', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                  const Spacer(),
+                  Text(
+                    mesh.connectedDeviceCount > 0 ? '${mesh.connectedDeviceCount} peer(s)' : 'No peers',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: mesh.connectedDeviceCount > 0 ? AppColors.safeGreen : Colors.orange,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _statusChip('Advertising', mesh.isAdvertising),
+                  const SizedBox(width: 8),
+                  _statusChip('Scanning', mesh.isScanning),
+                  const SizedBox(width: 8),
+                  _statusChip('Running', mesh.isRunning),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text('Device ID: ${app.deviceId.substring(0, 8)}...', style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+              const Divider(),
+              Expanded(
+                child: mesh.debugLog.isEmpty
+                    ? const Center(child: Text('No BLE events yet', style: TextStyle(color: AppColors.textMuted)))
+                    : ListView.builder(
+                        controller: scrollController,
+                        itemCount: mesh.debugLog.length,
+                        itemBuilder: (_, i) {
+                          final line = mesh.debugLog[mesh.debugLog.length - 1 - i];
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 2),
+                            child: Text(
+                              line,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontFamily: 'monospace',
+                                color: line.contains('ERROR') || line.contains('error') || line.contains('WARNING')
+                                    ? AppColors.sosRed
+                                    : line.contains('READY') || line.contains('Connected')
+                                        ? AppColors.safeGreen
+                                        : AppColors.textSecondary,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _statusChip(String label, bool active) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: active ? AppColors.safeGreen.withAlpha(30) : AppColors.surfaceContainer,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: active ? AppColors.safeGreen.withAlpha(80) : AppColors.outline.withAlpha(40)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.circle, size: 6, color: active ? AppColors.safeGreen : AppColors.textMuted),
+          const SizedBox(width: 4),
+          Text(label, style: TextStyle(fontSize: 10, color: active ? AppColors.safeGreen : AppColors.textMuted)),
+        ],
+      ),
+    );
   }
 
   void _showConnectionInfo(BuildContext context, ConnectivityProvider conn) {
