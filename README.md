@@ -4,15 +4,34 @@ Offline-first BLE mesh disaster communication app with on-device AI, triage assi
 
 Two Android phones can communicate via Bluetooth Low Energy (BLE) without any internet connection. When connectivity is restored, messages sync to the cloud.
 
+## Download APK
+
+Download the latest pre-built APK from [GitHub Releases](https://github.com/dash-pr/beacon/releases/latest).
+
+Install on your Android device:
+1. Transfer the APK to your phone (USB, AirDrop, email, etc.)
+2. Enable **Settings → Security → Install Unknown Apps** for your file manager
+3. Open the APK and tap Install
+
+Or via ADB:
+```bash
+adb install beacon-v1.0.apk
+```
+
 ## Features
 
 - **BLE Mesh Chat** — P2P messaging between devices using Bluetooth Low Energy, no internet required
-- **SOS Detection** — Automatic keyword-based urgency scoring in Japanese and English
+- **Manual SOS** — One-tap SOS button in chat with confirmation dialog
+- **Direct Messages** — Private P2P conversations between discovered devices
 - **On-Device AI Assistant** — Gemma 3 1B LLM for offline first-aid and disaster guidance
 - **Camera Triage** — ML Kit image labeling for offline damage/injury assessment
 - **Voice Input** — On-device speech-to-text for hands-free messaging
+- **Translation** — ML Kit on-device translation (EN, JA, ZH, KO)
+- **Multi-Language UI** — Full app localization in English, Japanese, Chinese, Korean
+- **Community Forum** — Resource reports (food, shelter, medical, hazards) with approval system
 - **Disaster Alerts** — J-Alert XML feed with translation support
-- **Offline Maps** — Pre-cached OpenStreetMap tiles with shelter markers
+- **Topographic Maps** — OpenTopoMap with shelter markers and forum resource overlays
+- **au Starlink Direct** — Satellite backup mode for areas with no cellular coverage
 - **Safety Checks** — Mutual safety confirmation between connected users
 - **Responder Dashboard** — SOS feed with severity filtering and map view
 - **Cloud Sync** — Firebase Firestore sync when internet becomes available
