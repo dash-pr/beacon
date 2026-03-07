@@ -21,6 +21,7 @@ class BleMeshService {
   bool _isRunning = false;
   bool _isAdvertising = false;
   bool _isScanning = false;
+  bool _peripheralReady = false;
   Timer? _rescanTimer;
 
   // Debug log for UI visibility
@@ -46,8 +47,8 @@ class BleMeshService {
     await _startPeripheral();
     await _startCentral();
 
-    // Periodic rescan — Android throttles BLE scans after ~30s
-    _rescanTimer = Timer.periodic(const Duration(seconds: 25), (_) {
+    // Periodic rescan — Android throttles BLE scans
+    _rescanTimer = Timer.periodic(const Duration(seconds: 30), (_) {
       if (_isRunning) _restartScan();
     });
   }
@@ -71,6 +72,7 @@ class BleMeshService {
     }
     _centralCharacteristics.clear();
     _connectingDevices.clear();
+    _peripheralReady = false;
   }
 
   // === PERIPHERAL ROLE (ble_peripheral) ===
@@ -79,17 +81,17 @@ class BleMeshService {
       // Set ALL callbacks BEFORE initialize (per ble_peripheral docs)
       peripheral.BlePeripheral.setWriteRequestCallback(
         (String deviceId, String characteristicId, int offset, Uint8List? value) {
-          _log('Write from $deviceId, ${value?.length ?? 0} bytes');
+          _log('Write from ${deviceId.substring(0, 8)}..., ${value?.length ?? 0}B');
           if (value != null) {
             _handleIncomingData(value);
           }
-          return null; // Return null for success (per example)
+          return null;
         },
       );
 
       peripheral.BlePeripheral.setReadRequestCallback(
         (String deviceId, String characteristicId, int offset, Uint8List? value) {
-          _log('Read request from $deviceId');
+          _log('Read req from ${deviceId.substring(0, 8)}...');
           return peripheral.ReadRequestResult(
             value: Uint8List.fromList(utf8.encode(app.deviceId)),
           );
@@ -107,36 +109,22 @@ class BleMeshService {
         },
       );
 
-      // Android only — track peripheral-side connections
       peripheral.BlePeripheral.setConnectionStateChangeCallback(
         (String deviceId, bool connected) {
-          _log('Peripheral connection: $deviceId connected=$connected');
+          _log('Periph conn: ${deviceId.substring(0, 8)}... connected=$connected');
         },
       );
 
       peripheral.BlePeripheral.setMtuChangeCallback(
         (String deviceId, int mtu) {
-          _log('MTU changed: $deviceId -> $mtu');
+          _log('MTU: ${deviceId.substring(0, 8)}... -> $mtu');
         },
       );
 
       await peripheral.BlePeripheral.initialize();
       _log('Peripheral initialized');
 
-      // Use a completer to wait for service registration
-      final serviceCompleter = Completer<void>();
-      peripheral.BlePeripheral.setServiceAddedCallback(
-        (String serviceId, String? error) {
-          if (error != null) {
-            _log('Service add failed: $error');
-            if (!serviceCompleter.isCompleted) serviceCompleter.completeError(error);
-          } else {
-            _log('Service added: $serviceId');
-            if (!serviceCompleter.isCompleted) serviceCompleter.complete();
-          }
-        },
-      );
-
+      // Add service and wait for registration
       await peripheral.BlePeripheral.addService(
         peripheral.BleService(
           uuid: AppConfig.serviceUuid,
@@ -154,19 +142,30 @@ class BleMeshService {
                 peripheral.AttributePermissions.readable.index,
                 peripheral.AttributePermissions.writeable.index,
               ],
+              value: null,
             ),
           ],
         ),
       );
+      _log('Service registered');
 
-      // Wait for service to actually be registered (with timeout)
+      // Verify service was actually added
       try {
-        await serviceCompleter.future.timeout(const Duration(seconds: 5));
+        final services = await peripheral.BlePeripheral.getServices();
+        _log('Registered services: $services');
+        if (services.any((s) => s.toLowerCase() == AppConfig.serviceUuid.toLowerCase())) {
+          _peripheralReady = true;
+          _log('Service verified OK');
+        } else {
+          _log('WARNING: Service not in getServices() list!');
+        }
       } catch (e) {
-        _log('Service registration timeout/error: $e');
+        _log('getServices check failed: $e');
+        // Assume it worked if addService didn't throw
+        _peripheralReady = true;
       }
 
-      // Now start advertising (after service is registered)
+      // Start advertising after service is registered
       await peripheral.BlePeripheral.startAdvertising(
         services: [AppConfig.serviceUuid],
         localName: 'Beacon',
@@ -190,20 +189,37 @@ class BleMeshService {
           final matchesName = name == 'Beacon';
 
           if (matchesService || matchesName) {
-            _log('Found peer: ${result.device.remoteId} name=$name rssi=${result.rssi}');
+            _log('Found: ${result.device.remoteId.str.substring(0, 8)}... name=$name rssi=${result.rssi} svc=$matchesService');
             _connectToPeripheral(result.device);
           }
         }
       });
 
-      // Scan with fine location enabled (we have the permission)
+      // Scan with service UUID filter for better Android discovery
+      // Also use timeout-based scanning instead of continuousUpdates
       await FlutterBluePlus.startScan(
+        withServices: [Guid(AppConfig.serviceUuid)],
         androidUsesFineLocation: true,
-        continuousUpdates: true,
-        removeIfGone: const Duration(seconds: 15),
+        timeout: const Duration(seconds: 25),
       );
       _isScanning = true;
-      _log('Central scan started');
+      _log('Scan started (UUID filter)');
+
+      // Also do a broad scan to catch devices that advertise by name only
+      Future.delayed(const Duration(seconds: 3), () async {
+        if (!_isRunning) return;
+        try {
+          await FlutterBluePlus.stopScan();
+          await Future.delayed(const Duration(milliseconds: 300));
+          await FlutterBluePlus.startScan(
+            androidUsesFineLocation: true,
+            timeout: const Duration(seconds: 20),
+          );
+          _log('Broad scan started');
+        } catch (e) {
+          _log('Broad scan error: $e');
+        }
+      });
     } catch (e) {
       _log('Central scan error: $e');
     }
@@ -212,13 +228,17 @@ class BleMeshService {
   Future<void> _restartScan() async {
     try {
       await FlutterBluePlus.stopScan();
+      _isScanning = false;
       await Future.delayed(const Duration(milliseconds: 500));
+
+      // Alternate between UUID-filtered and broad scans
       await FlutterBluePlus.startScan(
+        withServices: [Guid(AppConfig.serviceUuid)],
         androidUsesFineLocation: true,
-        continuousUpdates: true,
-        removeIfGone: const Duration(seconds: 15),
+        timeout: const Duration(seconds: 25),
       );
-      _log('Scan restarted');
+      _isScanning = true;
+      _log('Scan restarted (UUID filter)');
     } catch (e) {
       _log('Rescan error: $e');
     }
@@ -231,65 +251,69 @@ class BleMeshService {
     _connectingDevices.add(deviceId);
 
     try {
-      _log('Connecting to $deviceId...');
+      _log('Connecting ${deviceId.substring(0, 8)}...');
       await device.connect(
-        autoConnect: false, // false = connect immediately, faster
+        autoConnect: false,
         timeout: const Duration(seconds: 15),
       );
-      _log('Connected to $deviceId');
+      _log('Connected ${deviceId.substring(0, 8)}...');
 
-      // Negotiate larger MTU — default 20 bytes is too small for JSON messages
+      // Negotiate larger MTU
       try {
         final mtu = await device.requestMtu(512);
-        _log('MTU negotiated: $mtu for $deviceId');
+        _log('MTU=$mtu for ${deviceId.substring(0, 8)}...');
       } catch (e) {
-        _log('MTU negotiation failed: $e');
+        _log('MTU fail: $e');
       }
 
       device.connectionState.listen((state) {
         if (state == BluetoothConnectionState.disconnected) {
-          _log('Disconnected from $deviceId');
+          _log('Disconnected ${deviceId.substring(0, 8)}...');
           _centralCharacteristics.remove(deviceId);
           _connectingDevices.remove(deviceId);
         }
       });
 
       final services = await device.discoverServices();
-      _log('Discovered ${services.length} services on $deviceId');
+      _log('Discovered ${services.length} services on ${deviceId.substring(0, 8)}...');
 
       bool foundChar = false;
       for (final service in services) {
         if (service.uuid.str.toLowerCase() == AppConfig.serviceUuid.toLowerCase()) {
-          _log('Found Beacon service on $deviceId');
+          _log('Found Beacon service');
           for (final char in service.characteristics) {
             if (char.uuid.str.toLowerCase() == AppConfig.characteristicUuid.toLowerCase()) {
               _centralCharacteristics[deviceId] = char;
               foundChar = true;
-              _log('Found Beacon characteristic on $deviceId — PEER READY');
+              _log('PEER READY: ${deviceId.substring(0, 8)}...');
 
               try {
                 await char.setNotifyValue(true);
                 char.onValueReceived.listen((value) {
-                  _log('Notification from $deviceId: ${value.length} bytes');
+                  _log('Notif from ${deviceId.substring(0, 8)}...: ${value.length}B');
                   _handleIncomingData(Uint8List.fromList(value));
                 });
-                _log('Subscribed to notifications on $deviceId');
+                _log('Subscribed to notifications');
               } catch (e) {
-                _log('Notification subscribe error: $e');
+                _log('Notify subscribe error: $e');
               }
             }
           }
         }
       }
       if (!foundChar) {
-        _log('WARNING: Beacon service/characteristic NOT found on $deviceId');
-        // List what we did find for debugging
+        _log('WARNING: Beacon char NOT found on ${deviceId.substring(0, 8)}...');
         for (final s in services) {
-          _log('  Service: ${s.uuid}');
+          _log('  svc: ${s.uuid}');
         }
+        // Disconnect — this device doesn't have our service
+        try {
+          await device.disconnect();
+        } catch (_) {}
+        _connectingDevices.remove(deviceId);
       }
     } catch (e) {
-      _log('Connection error for $deviceId: $e');
+      _log('Connect error ${deviceId.substring(0, 8)}...: $e');
       _connectingDevices.remove(deviceId);
     }
   }
@@ -299,7 +323,7 @@ class BleMeshService {
     _seenMessageIds.add(message.id);
     final jsonStr = jsonEncode(message.toJson());
     final jsonBytes = Uint8List.fromList(utf8.encode(jsonStr));
-    _log('Sending message: ${jsonBytes.length} bytes to ${_centralCharacteristics.length} peers');
+    _log('Sending ${jsonBytes.length}B to ${_centralCharacteristics.length} peers');
 
     // Save to Hive
     await app.messageBox.add(message);
@@ -309,14 +333,13 @@ class BleMeshService {
     for (final entry in _centralCharacteristics.entries) {
       try {
         await entry.value.write(jsonBytes, withoutResponse: false);
-        _log('Wrote to ${entry.key} (with response)');
+        _log('Wrote to ${entry.key.substring(0, 8)}...');
       } catch (e) {
-        _log('Write-with-response failed for ${entry.key}: $e');
         try {
           await entry.value.write(jsonBytes, withoutResponse: true);
-          _log('Wrote to ${entry.key} (without response, fallback)');
+          _log('Wrote (noResp) to ${entry.key.substring(0, 8)}...');
         } catch (e2) {
-          _log('Write failed completely for ${entry.key}: $e2');
+          _log('Write failed ${entry.key.substring(0, 8)}...: $e2');
           failedDevices.add(entry.key);
         }
       }
@@ -326,14 +349,70 @@ class BleMeshService {
     }
 
     // Notify via Peripheral role (for any centrals connected to us)
+    if (_peripheralReady) {
+      try {
+        await peripheral.BlePeripheral.updateCharacteristic(
+          characteristicId: AppConfig.characteristicUuid,
+          value: jsonBytes,
+        );
+        _log('Peripheral notify sent');
+      } catch (e) {
+        _log('Peripheral notify error: $e');
+        // Try to re-register the service if characteristic not found
+        if (e.toString().contains('Characteristic not found')) {
+          _log('Attempting service re-registration...');
+          _peripheralReady = false;
+          _reRegisterService();
+        }
+      }
+    }
+  }
+
+  /// Re-register the GATT service if the native side lost it
+  Future<void> _reRegisterService() async {
     try {
-      await peripheral.BlePeripheral.updateCharacteristic(
-        characteristicId: AppConfig.characteristicUuid,
-        value: jsonBytes,
+      // Clear and re-add
+      try {
+        await peripheral.BlePeripheral.clearServices();
+      } catch (_) {}
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      await peripheral.BlePeripheral.addService(
+        peripheral.BleService(
+          uuid: AppConfig.serviceUuid,
+          primary: true,
+          characteristics: [
+            peripheral.BleCharacteristic(
+              uuid: AppConfig.characteristicUuid,
+              properties: [
+                peripheral.CharacteristicProperties.read.index,
+                peripheral.CharacteristicProperties.write.index,
+                peripheral.CharacteristicProperties.writeWithoutResponse.index,
+                peripheral.CharacteristicProperties.notify.index,
+              ],
+              permissions: [
+                peripheral.AttributePermissions.readable.index,
+                peripheral.AttributePermissions.writeable.index,
+              ],
+              value: null,
+            ),
+          ],
+        ),
       );
-      _log('Peripheral notification sent');
+      _peripheralReady = true;
+      _log('Service re-registered OK');
+
+      // Restart advertising
+      try {
+        await peripheral.BlePeripheral.stopAdvertising();
+      } catch (_) {}
+      await peripheral.BlePeripheral.startAdvertising(
+        services: [AppConfig.serviceUuid],
+        localName: 'Beacon',
+      );
+      _log('Re-advertising started');
     } catch (e) {
-      _log('Peripheral notification error: $e');
+      _log('Service re-registration failed: $e');
     }
   }
 
@@ -344,12 +423,9 @@ class BleMeshService {
       final json = jsonDecode(jsonStr) as Map<String, dynamic>;
       final message = MessageModel.fromJson(json);
 
-      if (_seenMessageIds.contains(message.id)) {
-        _log('Duplicate message ${message.id.substring(0, 8)}, skipping');
-        return;
-      }
+      if (_seenMessageIds.contains(message.id)) return;
       _seenMessageIds.add(message.id);
-      _log('Received message from ${message.senderName}: "${message.content.substring(0, message.content.length.clamp(0, 30))}..."');
+      _log('Recv from ${message.senderName}: "${message.content.substring(0, message.content.length.clamp(0, 30))}"');
 
       app.messageBox.add(message);
       _messageController.add(message);
@@ -367,15 +443,17 @@ class BleMeshService {
           } catch (_) {}
         }
 
-        try {
-          peripheral.BlePeripheral.updateCharacteristic(
-            characteristicId: AppConfig.characteristicUuid,
-            value: jsonBytes,
-          );
-        } catch (_) {}
+        if (_peripheralReady) {
+          try {
+            peripheral.BlePeripheral.updateCharacteristic(
+              characteristicId: AppConfig.characteristicUuid,
+              value: jsonBytes,
+            );
+          } catch (_) {}
+        }
       }
     } catch (e) {
-      _log('Parse error: $e, data length: ${data.length}');
+      _log('Parse error: $e (${data.length}B)');
     }
   }
 
