@@ -22,6 +22,11 @@ class MessageProvider extends ChangeNotifier {
     'demo-nakamura': 'Nakamura Ren',
   };
 
+  MessageProvider() {
+    // Seed demo data immediately so it's available on first build
+    _seedDemo();
+  }
+
   List<MessageModel> get messages => List.unmodifiable(_messages);
   Map<String, String> get knownUsers => Map.unmodifiable(_knownUsers);
 
