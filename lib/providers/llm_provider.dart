@@ -55,6 +55,16 @@ class LlmProvider extends ChangeNotifier {
     );
   }
 
+  void replaceLastUserMessage(String newText) {
+    for (int i = _messages.length - 1; i >= 0; i--) {
+      if (_messages[i].isUser) {
+        _messages[i] = ChatMessage(text: newText, isUser: true);
+        notifyListeners();
+        return;
+      }
+    }
+  }
+
   void clearConversation() {
     _messages.clear();
     _currentResponse = '';

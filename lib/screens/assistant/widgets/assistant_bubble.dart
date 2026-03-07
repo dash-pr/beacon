@@ -25,13 +25,16 @@ class AssistantBubble extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isUser ? AppColors.accent : AppColors.surfaceLight,
+          color: isUser ? AppColors.primary : AppColors.surfaceContainer,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
             bottomLeft: Radius.circular(isUser ? 16 : 4),
             bottomRight: Radius.circular(isUser ? 4 : 16),
           ),
+          border: isUser
+              ? null
+              : Border.all(color: AppColors.outline.withAlpha(60)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,14 +45,14 @@ class AssistantBubble extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.smart_toy, size: 14, color: AppColors.accentLight),
+                    Icon(Icons.smart_toy, size: 14, color: AppColors.primary),
                     const SizedBox(width: 4),
                     Text(
                       'Beacon AI',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,
-                        color: AppColors.accentLight,
+                        color: AppColors.primary,
                       ),
                     ),
                   ],
@@ -60,7 +63,7 @@ class AssistantBubble extends StatelessWidget {
               style: const TextStyle(
                 color: AppColors.textPrimary,
                 fontSize: 14,
-                height: 1.4,
+                height: 1.5,
               ),
             ),
             if (isStreaming)

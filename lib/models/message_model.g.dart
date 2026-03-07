@@ -29,13 +29,14 @@ class MessageModelAdapter extends TypeAdapter<MessageModel> {
       lat: fields[9] as double?,
       lng: fields[10] as double?,
       imageBase64: fields[11] as String?,
+      recipientId: fields[12] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, MessageModel obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(13)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +60,9 @@ class MessageModelAdapter extends TypeAdapter<MessageModel> {
       ..writeByte(10)
       ..write(obj.lng)
       ..writeByte(11)
-      ..write(obj.imageBase64);
+      ..write(obj.imageBase64)
+      ..writeByte(12)
+      ..write(obj.recipientId);
   }
 
   @override

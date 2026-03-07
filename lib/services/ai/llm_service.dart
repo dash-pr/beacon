@@ -15,35 +15,75 @@ class LlmService {
     } catch (_) {
       _systemPrompt = 'You are Beacon, an emergency first-aid assistant.';
     }
-    // flutter_gemma would be initialized here on Android.
-    // On web, we use hardcoded offline responses.
     _isInitialized = true;
   }
 
   Stream<String> generateResponse(String prompt) async* {
+    // Always work — don't gate on initialization
     if (!_isInitialized) {
-      yield 'AI model not loaded. Please restart the app.';
-      return;
+      await initialize();
     }
 
     // Mock streaming response for build/compilation
-    // In production, this would use flutter_gemma session API:
+    // In production with real Android device, this would use flutter_gemma:
     //   final model = await FlutterGemma.getActiveModel(maxTokens: 512);
     //   final session = await model.createSession();
     //   await session.addQueryChunk(Message.text(text: _systemPrompt, isUser: false));
     //   await session.addQueryChunk(Message.text(text: prompt, isUser: true));
     //   await for (var token in session.getResponseAsync()) { yield token; }
 
-    final responses = _getOfflineResponse(prompt);
-    for (final word in responses.split(' ')) {
-      await Future.delayed(const Duration(milliseconds: 50));
+    final response = _getOfflineResponse(prompt);
+    for (final word in response.split(' ')) {
+      await Future.delayed(const Duration(milliseconds: 40));
       yield '$word ';
     }
+  }
+
+  /// Summarize image analysis results into a text description for the assistant
+  String describeTriageResult({
+    required String hazardType,
+    required String severity,
+    required List<String> labels,
+    required String extractedText,
+    required String actionEn,
+  }) {
+    final buffer = StringBuffer();
+    buffer.writeln('Image analysis detected: $hazardType (severity: $severity)');
+    if (labels.isNotEmpty) {
+      buffer.writeln('Detected: ${labels.take(5).join(', ')}');
+    }
+    if (extractedText.isNotEmpty) {
+      buffer.writeln('Text in image: $extractedText');
+    }
+    buffer.writeln('Recommended action: $actionEn');
+    return buffer.toString();
   }
 
   String _getOfflineResponse(String prompt) {
     final lower = prompt.toLowerCase();
     final hasJa = RegExp(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]').hasMatch(prompt);
+
+    // Image analysis context
+    if (lower.contains('image analysis detected') || lower.contains('detected:')) {
+      if (lower.contains('fire') || lower.contains('smoke')) {
+        return hasJa
+            ? '画像から火災の兆候が確認されました。直ちにその場所から離れてください。鼻と口を布で覆い、低い姿勢で避難してください。119番に通報できる場合は通報してください。'
+            : 'The image shows signs of fire. Evacuate the area immediately. Cover your nose and mouth with cloth and stay low to avoid smoke inhalation. Call emergency services (119) if possible.';
+      }
+      if (lower.contains('medical') || lower.contains('wound') || lower.contains('blood')) {
+        return hasJa
+            ? '画像から負傷が確認されました。清潔な布で傷口を直接圧迫してください。可能であれば患部を心臓より高くしてください。出血が止まらない場合は直ちに医療機関を受診してください。'
+            : 'The image indicates an injury. Apply direct pressure with a clean cloth. Elevate the wounded area above heart level if possible. If bleeding persists, seek emergency medical help immediately.';
+      }
+      if (lower.contains('flood') || lower.contains('water')) {
+        return hasJa
+            ? '画像から浸水が確認されました。直ちに高台へ避難してください。流水の中を歩かないでください。水に触れた食品は食べないでください。'
+            : 'The image shows flooding. Move to higher ground immediately. Do not walk through moving water. Avoid food that has contacted floodwater.';
+      }
+      return hasJa
+          ? '画像分析の結果を確認しました。安全な場所に移動し、状況が悪化した場合は直ちに避難してください。追加の質問があればお聞きください。'
+          : 'I\'ve reviewed the image analysis. Move to a safe location and evacuate immediately if the situation worsens. Feel free to ask me any follow-up questions about the situation.';
+    }
 
     if (lower.contains('bleed') || lower.contains('cut') || lower.contains('wound') ||
         prompt.contains('血') || prompt.contains('出血') || prompt.contains('怪我')) {
@@ -114,8 +154,6 @@ class LlmService {
               'Use an AED if one is available nearby. '
               'Continue CPR until emergency responders arrive.';
     }
-
-    // Mountain / hiking / backcountry responses
     if (lower.contains('avalanche') || prompt.contains('雪崩')) {
       return hasJa
           ? '雪崩に巻き込まれた場合、泳ぐような動作で表面に留まろうとしてください。停止したら口の前に空間を作ってください。埋没したら動かずに体力を温存してください。ビーコンをお持ちの場合はオンにしてください。'
@@ -135,7 +173,7 @@ class LlmService {
     if (lower.contains('frostbite') || prompt.contains('凍傷')) {
       return hasJa
           ? '凍傷部分を37-39度のぬるま湯に浸してください。こすったり、雪で温めようとしないでください。解凍中は激しい痛みがありますが、正常です。一度解凍した後は再凍結を絶対に避けてください。'
-          : 'Immerse frostbitten area in warm (not hot) water at 37-39°C. '
+          : 'Immerse frostbitten area in warm (not hot) water at 37-39C. '
               'Do NOT rub the area or try to warm with snow. '
               'Expect severe pain during thawing - this is normal. '
               'Never re-freeze after thawing - this causes more damage.';

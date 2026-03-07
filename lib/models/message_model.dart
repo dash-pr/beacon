@@ -40,6 +40,9 @@ class MessageModel extends HiveObject {
   @HiveField(11)
   final String? imageBase64;
 
+  @HiveField(12)
+  final String? recipientId; // null = community broadcast, set = DM
+
   MessageModel({
     required this.id,
     required this.senderId,
@@ -53,10 +56,14 @@ class MessageModel extends HiveObject {
     this.lat,
     this.lng,
     this.imageBase64,
+    this.recipientId,
   });
 
   MessageType get type => MessageType.values[typeIndex];
   Priority get priority => Priority.values[priorityIndex];
+
+  bool get isBroadcast => recipientId == null;
+  bool get isDm => recipientId != null;
 
   MessageModel copyWith({
     String? id,
@@ -71,6 +78,7 @@ class MessageModel extends HiveObject {
     double? lat,
     double? lng,
     String? imageBase64,
+    String? recipientId,
   }) {
     return MessageModel(
       id: id ?? this.id,
@@ -85,6 +93,7 @@ class MessageModel extends HiveObject {
       lat: lat ?? this.lat,
       lng: lng ?? this.lng,
       imageBase64: imageBase64 ?? this.imageBase64,
+      recipientId: recipientId ?? this.recipientId,
     );
   }
 
@@ -100,6 +109,7 @@ class MessageModel extends HiveObject {
       'h': hopCount,
       if (lat != null) 'la': lat,
       if (lng != null) 'lo': lng,
+      if (recipientId != null) 'rid': recipientId,
     };
   }
 
@@ -116,6 +126,7 @@ class MessageModel extends HiveObject {
       hopCount: json['h'] as int? ?? 0,
       lat: (json['la'] as num?)?.toDouble(),
       lng: (json['lo'] as num?)?.toDouble(),
+      recipientId: json['rid'] as String?,
     );
   }
 }
