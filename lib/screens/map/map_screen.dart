@@ -52,6 +52,10 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _startLocationTracking() async {
     try {
+      // Check if location services are enabled
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) return;
+
       LocationPermission perm = await Geolocator.checkPermission();
       if (perm == LocationPermission.denied) {
         perm = await Geolocator.requestPermission();
@@ -61,22 +65,34 @@ class _MapScreenState extends State<MapScreen> {
         return;
       }
 
-      final pos = await Geolocator.getCurrentPosition();
-      setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
-
-      const locationSettings = LocationSettings(
-        accuracy: LocationAccuracy.high,
-        distanceFilter: 10,
+      // Get initial position with timeout
+      final pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
       );
+      if (mounted) {
+        setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
+      }
+
+      // Stream updates
       _locationSub = Geolocator.getPositionStream(
-        locationSettings: locationSettings,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+          distanceFilter: 10,
+        ),
       ).listen((pos) {
         if (mounted) {
           setState(() => _currentLocation = LatLng(pos.latitude, pos.longitude));
         }
       });
-    } catch (_) {
-      // Location not available
+    } catch (e) {
+      // Try last known position as fallback
+      try {
+        final lastPos = await Geolocator.getLastKnownPosition();
+        if (lastPos != null && mounted) {
+          setState(() => _currentLocation = LatLng(lastPos.latitude, lastPos.longitude));
+        }
+      } catch (_) {}
     }
   }
 
