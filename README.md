@@ -22,6 +22,16 @@ Or via ADB:
 adb install beacon-v1.0.apk
 ```
 
+## Screenshots
+
+| Chat | AI Assistant | Map |
+|:---:|:---:|:---:|
+| ![Chat](screenshots/01-chat.png) | ![Assistant](screenshots/02-assistant.png) | ![Map](screenshots/03-map.png) |
+
+| Forum | Alerts | Responder |
+|:---:|:---:|:---:|
+| ![Forum](screenshots/04-forum.png) | ![Alerts](screenshots/05-alerts.png) | ![Responder](screenshots/06-responder.png) |
+
 ## Features
 
 - **BLE Mesh Chat** — P2P messaging between devices using Bluetooth Low Energy, no internet required
