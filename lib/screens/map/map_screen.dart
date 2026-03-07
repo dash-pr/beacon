@@ -40,6 +40,8 @@ class _MapScreenState extends State<MapScreen> {
   @override
   void initState() {
     super.initState();
+    // Set fallback location immediately so the blue dot and button show right away
+    _currentLocation = _niseko;
     _loadShelters();
     _startLocationTracking();
   }

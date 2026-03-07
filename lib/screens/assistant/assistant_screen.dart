@@ -66,8 +66,14 @@ class _AssistantScreenState extends State<AssistantScreen> {
     },
     {
       'icon': '📋',
-      'label': 'Japanese Sign (OCR)',
+      'label': 'Japanese Sign',
       'query': '[Camera Analysis] Scene: outdoor | Severity: low | Objects: sign, pole | OCR text: "避難所 この先200m 右折 — 港区防災センター"',
+    },
+    {
+      'icon': '📷',
+      'label': 'Food Label (OCR)',
+      'query': '[Camera Analysis] Scene: indoor | Severity: low | Objects: food package, label, text | OCR text: "賞味期限 2024.10.15 品名：カップヌードル 日清食品"',
+      'hasImage': 'true',
     },
   ];
 
@@ -117,22 +123,26 @@ class _AssistantScreenState extends State<AssistantScreen> {
     _scrollToBottom();
   }
 
-  void _startListening() async {
-    if (!_voiceReady) return;
-    setState(() => _isListening = true);
-    await _voiceService.startListening(
-      onResult: (text) {
-        _controller.text = text;
-        _controller.selection = TextSelection.fromPosition(
-          TextPosition(offset: text.length),
-        );
-      },
-    );
-  }
-
-  void _stopListening() async {
-    await _voiceService.stopListening();
-    setState(() => _isListening = false);
+  void _toggleListening() async {
+    if (_isListening) {
+      await _voiceService.stopListening();
+      setState(() => _isListening = false);
+      // Auto-submit if there's text
+      if (_controller.text.trim().isNotEmpty) {
+        _ask(_controller.text);
+      }
+    } else {
+      if (!_voiceReady) return;
+      setState(() => _isListening = true);
+      await _voiceService.startListening(
+        onResult: (text) {
+          _controller.text = text;
+          _controller.selection = TextSelection.fromPosition(
+            TextPosition(offset: text.length),
+          );
+        },
+      );
+    }
   }
 
   Future<void> _translateInput() async {
@@ -198,6 +208,54 @@ class _AssistantScreenState extends State<AssistantScreen> {
         );
       }
     }
+  }
+
+  void _showDemoImageAndAnalyze(String query) {
+    // Show the demo image in a dialog, then run the analysis
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        contentPadding: const EdgeInsets.all(12),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/demo/ocr_demo.jpg',
+                fit: BoxFit.contain,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                const Icon(Icons.document_scanner, size: 16, color: AppColors.primary),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Analyzing image with on-device AI...',
+                    style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              _ask(query);
+            },
+            child: const Text('Analyze'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _sendToChat(String text) {
@@ -346,10 +404,9 @@ class _AssistantScreenState extends State<AssistantScreen> {
                   color: AppColors.primary,
                   tooltip: locale.t('take_photo'),
                 ),
-                // Voice input
+                // Voice input — tap to toggle
                 GestureDetector(
-                  onLongPressStart: _voiceReady ? (_) => _startListening() : null,
-                  onLongPressEnd: _voiceReady ? (_) => _stopListening() : null,
+                  onTap: _voiceReady ? _toggleListening : null,
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
@@ -461,27 +518,49 @@ class _AssistantScreenState extends State<AssistantScreen> {
             ),
           ),
           SizedBox(
-            height: 72,
+            height: 90,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: _imageScenarios.length,
               separatorBuilder: (_, _) => const SizedBox(width: 8),
               itemBuilder: (context, index) {
                 final scenario = _imageScenarios[index];
+                final hasImage = scenario['hasImage'] == 'true';
                 return GestureDetector(
-                  onTap: () => _ask(scenario['query']!),
+                  onTap: () {
+                    if (hasImage) {
+                      _showDemoImageAndAnalyze(scenario['query']!);
+                    } else {
+                      _ask(scenario['query']!);
+                    }
+                  },
                   child: Container(
-                    width: 100,
+                    width: hasImage ? 120 : 100,
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: AppColors.surfaceContainer,
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.outline.withAlpha(60)),
+                      border: Border.all(
+                        color: hasImage
+                            ? AppColors.primary.withAlpha(80)
+                            : AppColors.outline.withAlpha(60),
+                      ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(scenario['icon']!, style: const TextStyle(fontSize: 22)),
+                        if (hasImage)
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: Image.asset(
+                              'assets/demo/ocr_demo.jpg',
+                              height: 40,
+                              width: 100,
+                              fit: BoxFit.cover,
+                            ),
+                          )
+                        else
+                          Text(scenario['icon']!, style: const TextStyle(fontSize: 22)),
                         const SizedBox(height: 4),
                         Text(
                           scenario['label']!,

@@ -110,6 +110,9 @@ class _ChatScreenState extends State<ChatScreen> with SingleTickerProviderStateM
         }
       } catch (_) {}
     }
+    // Fallback: Shibuya crossing if no GPS available (emulator/demo)
+    lat ??= 35.6595;
+    lng ??= 139.7004;
 
     if (!mounted) return;
     final locale = context.read<LocaleProvider>();

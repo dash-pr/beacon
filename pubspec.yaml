@@ -75,3 +75,4 @@ flutter:
   assets:
     - assets/shelters/
     - assets/prompts/
+    - assets/demo/
