@@ -136,19 +136,30 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
       final result = await _imageAnalysisService.analyzeImage(imagePath);
 
+      // Translate OCR text if present and translation is available
+      String ocrText = result.extractedText;
+      if (ocrText.isNotEmpty && _translationReady) {
+        try {
+          final translated = await _translationService.translate(ocrText);
+          if (translated != ocrText) {
+            ocrText = '$ocrText\n[Translation: $translated]';
+          }
+        } catch (_) {}
+      }
+
       // Feed the triage result into the LLM as context
       final description = LlmService().describeTriageResult(
         hazardType: result.hazardType,
         severity: result.severity,
         labels: result.labels,
-        extractedText: result.extractedText,
+        extractedText: ocrText,
         actionEn: result.actionEn,
       );
 
       if (!mounted) return;
       // Replace the "analyzing" message with real analysis
       final llm = context.read<LlmProvider>();
-      llm.replaceLastUserMessage('Image captured — $description');
+      llm.replaceLastUserMessage('📷 $description');
       llm.askQuestion(description);
       _scrollToBottom();
     } catch (e) {

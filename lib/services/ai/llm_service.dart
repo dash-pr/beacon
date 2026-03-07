@@ -48,14 +48,14 @@ class LlmService {
     required String actionEn,
   }) {
     final buffer = StringBuffer();
-    buffer.writeln('Image analysis detected: $hazardType (severity: $severity)');
+    buffer.write('[Camera Analysis] ');
+    buffer.write('Scene: $hazardType | Severity: $severity');
     if (labels.isNotEmpty) {
-      buffer.writeln('Detected: ${labels.take(5).join(', ')}');
+      buffer.write(' | Objects: ${labels.take(6).join(', ')}');
     }
     if (extractedText.isNotEmpty) {
-      buffer.writeln('Text in image: $extractedText');
+      buffer.write(' | OCR text: "$extractedText"');
     }
-    buffer.writeln('Recommended action: $actionEn');
     return buffer.toString();
   }
 
@@ -63,26 +63,69 @@ class LlmService {
     final lower = prompt.toLowerCase();
     final hasJa = RegExp(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]').hasMatch(prompt);
 
-    // Image analysis context
-    if (lower.contains('image analysis detected') || lower.contains('detected:')) {
-      if (lower.contains('fire') || lower.contains('smoke')) {
-        return hasJa
-            ? '画像から火災の兆候が確認されました。直ちにその場所から離れてください。鼻と口を布で覆い、低い姿勢で避難してください。119番に通報できる場合は通報してください。'
-            : 'The image shows signs of fire. Evacuate the area immediately. Cover your nose and mouth with cloth and stay low to avoid smoke inhalation. Call emergency services (119) if possible.';
+    // Camera analysis context
+    if (lower.contains('[camera analysis]') || lower.contains('scene:') || lower.contains('ocr text:')) {
+      // Extract OCR text if present
+      final ocrMatch = RegExp(r'OCR text: "(.+?)"').firstMatch(prompt);
+      final ocrText = ocrMatch?.group(1) ?? '';
+
+      // If there's OCR text, focus on that
+      if (ocrText.isNotEmpty) {
+        final hasJaOcr = RegExp(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]').hasMatch(ocrText);
+        if (hasJaOcr) {
+          return 'Text detected in image (Japanese):\n"$ocrText"\n\n'
+              'Translation: This appears to be Japanese text. '
+              'If this is a warning sign, follow its instructions. '
+              'If this is from a document, I can help interpret it. '
+              'What would you like to know about this text?';
+        }
+        return 'Text detected in image:\n"$ocrText"\n\n'
+            'I found text in your photo. If this is a sign, label, or document, '
+            'I can help interpret it. What context do you need?';
       }
-      if (lower.contains('medical') || lower.contains('wound') || lower.contains('blood')) {
+
+      // Scene-based responses using actual detected objects
+      if (lower.contains('fire')) {
         return hasJa
-            ? '画像から負傷が確認されました。清潔な布で傷口を直接圧迫してください。可能であれば患部を心臓より高くしてください。出血が止まらない場合は直ちに医療機関を受診してください。'
-            : 'The image indicates an injury. Apply direct pressure with a clean cloth. Elevate the wounded area above heart level if possible. If bleeding persists, seek emergency medical help immediately.';
+            ? '🔥 火災/煙の兆候を検出しました。\n\n• 直ちに避難してください\n• 鼻と口を布で覆ってください\n• 低い姿勢で移動してください\n• 119番に通報してください\n• ドアを触る前に温度を確認してください'
+            : '🔥 Fire/smoke indicators detected.\n\n• Evacuate immediately\n• Cover nose and mouth with cloth\n• Stay low — smoke rises\n• Call 119 if possible\n• Check doors for heat before opening';
       }
-      if (lower.contains('flood') || lower.contains('water')) {
+      if (lower.contains('medical')) {
         return hasJa
-            ? '画像から浸水が確認されました。直ちに高台へ避難してください。流水の中を歩かないでください。水に触れた食品は食べないでください。'
-            : 'The image shows flooding. Move to higher ground immediately. Do not walk through moving water. Avoid food that has contacted floodwater.';
+            ? '🏥 医療状況の兆候を検出しました。\n\n• 傷口に清潔な布で直接圧迫\n• 負傷部位を心臓より高く\n• 患者の意識と呼吸を確認\n• 動かさないで — 脊椎損傷の可能性\n• 助けを呼んでください'
+            : '🏥 Medical situation indicators detected.\n\n• Apply direct pressure to wounds with clean cloth\n• Elevate injured area above heart level\n• Check consciousness and breathing\n• Do NOT move if spinal injury possible\n• Call for medical help';
       }
+      if (lower.contains('flood')) {
+        return hasJa
+            ? '🌊 水/浸水を検出しました。\n\n• 直ちに高台へ避難\n• 流水の中を歩かない（15cmで転倒する可能性）\n• 洪水の水に触れた食品は食べない\n• 電気設備から離れる\n• 水が引くまで待つ'
+            : '🌊 Water/flooding detected.\n\n• Move to higher ground immediately\n• Do NOT walk in moving water (15cm can knock you down)\n• Avoid food that contacted floodwater\n• Stay away from electrical equipment\n• Wait for water to recede';
+      }
+      if (lower.contains('structural')) {
+        return hasJa
+            ? '🏚️ 建物/構造物の損傷を検出しました。\n\n• 損傷した建物に入らない\n• 余震と落下物に注意\n• ガス漏れの匂いがしたら離れる\n• 避難経路を確認\n• ヘルメットがあれば着用'
+            : '🏚️ Building/structural damage detected.\n\n• Do NOT enter damaged buildings\n• Watch for aftershocks and falling debris\n• If you smell gas, leave immediately\n• Identify escape routes\n• Wear a helmet if available';
+      }
+      if (lower.contains('outdoor') || lower.contains('mountain') || lower.contains('snow')) {
+        return hasJa
+            ? '⛰️ 屋外/山岳の場面を分析しました。\n\n• 天候の変化に注意\n• 現在地をGPSで確認\n• 体温管理が最優先\n• 水分と食料を節約\n• 日没前に安全な場所を確保'
+            : '⛰️ Outdoor/mountain scene analyzed.\n\n• Watch for weather changes\n• Confirm your GPS location\n• Temperature management is priority\n• Ration water and food\n• Secure shelter before sunset';
+      }
+      if (lower.contains('people') || lower.contains('person')) {
+        return hasJa
+            ? '👥 画像に人が検出されました。\n\n• 怪我をしている人がいないか確認\n• 意識と呼吸を確認\n• 安全な場所に誘導\n• 必要であれば救助を要請'
+            : '👥 People detected in the image.\n\n• Check if anyone is injured\n• Verify consciousness and breathing\n• Guide them to a safe location\n• Call for rescue if needed';
+      }
+      if (lower.contains('vehicle') || lower.contains('road')) {
+        return hasJa
+            ? '🚗 車両/道路の状況を分析しました。\n\n• 道路の障害物を確認\n• 車両の損傷を点検\n• 燃料漏れに注意\n• 安全な場所に車を移動'
+            : '🚗 Vehicle/road scene analyzed.\n\n• Check for road obstructions\n• Inspect vehicle damage\n• Watch for fuel leaks\n• Move vehicle to safe location if possible';
+      }
+
+      // Generic response with labels
+      final labelsStr = RegExp(r'Objects: (.+?)(\||$)').firstMatch(prompt)?.group(1) ?? '';
       return hasJa
-          ? '画像分析の結果を確認しました。安全な場所に移動し、状況が悪化した場合は直ちに避難してください。追加の質問があればお聞きください。'
-          : 'I\'ve reviewed the image analysis. Move to a safe location and evacuate immediately if the situation worsens. Feel free to ask me any follow-up questions about the situation.';
+          ? '📷 画像を分析しました。検出: $labelsStr\n\n状況についてより詳しく教えてください。何が見えているか、どんな助けが必要かを説明してください。'
+          : '📷 Image analyzed. Detected: $labelsStr\n\nTell me more about the situation — describe what you see and what help you need, and I\'ll give specific guidance.';
     }
 
     if (lower.contains('bleed') || lower.contains('cut') || lower.contains('wound') ||
