@@ -11,14 +11,14 @@ import 'providers/responder_provider.dart';
 import 'providers/safety_check_provider.dart';
 import 'screens/home/home_screen.dart';
 
-class TasukeApp extends StatefulWidget {
-  const TasukeApp({super.key});
+class BeaconApp extends StatefulWidget {
+  const BeaconApp({super.key});
 
   @override
-  State<TasukeApp> createState() => _TasukeAppState();
+  State<BeaconApp> createState() => _BeaconAppState();
 }
 
-class _TasukeAppState extends State<TasukeApp> {
+class _BeaconAppState extends State<BeaconApp> {
   final _meshProvider = MeshProvider();
   final _messageProvider = MessageProvider();
   final _safetyCheckProvider = SafetyCheckProvider();
@@ -71,7 +71,7 @@ class _TasukeAppState extends State<TasukeApp> {
         ChangeNotifierProvider.value(value: _connectivityProvider),
       ],
       child: MaterialApp(
-        title: 'Tasuke',
+        title: 'Beacon',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.dark,
         home: const HomeScreen(),

@@ -1,4 +1,4 @@
-# Tasuke (助け) — Disaster P2P Communication App
+# Beacon — Disaster P2P Communication App
 
 Offline-first BLE mesh disaster communication app with on-device AI, triage assistance, translation, and situational awareness. Built for scenarios where cell towers are down and internet is unavailable.
 
@@ -37,8 +37,8 @@ Two Android phones can communicate via Bluetooth Low Energy (BLE) without any in
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/prathdev/tasuke.git
-cd tasuke
+git clone https://github.com/dash-pr/beacon.git
+cd beacon
 ```
 
 ### 2. Install dependencies
@@ -101,7 +101,7 @@ lib/
 ├── app.dart                           # MaterialApp + providers setup
 ├── core/
 │   ├── constants/                     # Colors, config
-│   ├── theme/                         # App theme (dark, disaster-appropriate)
+│   ├── theme/                         # Material 3 dark theme
 │   └── utils/                         # SOS detector, permissions
 ├── models/                            # Data models (Message, User, Alert, Shelter)
 ├── providers/                         # State management (Provider)
@@ -144,6 +144,7 @@ lib/
 | Local Storage | `hive` |
 | Maps | `flutter_map` + OpenStreetMap |
 | State Management | `provider` |
+| Design System | Material 3 |
 
 ## License
 
@@ -151,5 +152,4 @@ MIT
 
 ---
 
-*Built for IMPACT TOKYO Hackathon — Track 2: Smart Cities & Urban Resilience*
 *"When infrastructure fails, people shouldn't."*

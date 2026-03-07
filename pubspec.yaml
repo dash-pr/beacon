@@ -1,5 +1,5 @@
 name: tasuke
-description: "Offline-first disaster P2P communication with on-device AI"
+description: "Beacon - Offline-first disaster P2P communication with on-device AI"
 publish_to: 'none'
 version: 1.0.0+1
 

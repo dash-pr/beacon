@@ -62,7 +62,7 @@ class ResponderMap extends StatelessWidget {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.tasuke.app',
+              userAgentPackageName: 'com.beacon.app',
             ),
             MarkerLayer(markers: markers),
           ],

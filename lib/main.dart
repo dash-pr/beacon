@@ -24,5 +24,5 @@ Future<void> main() async {
   await settingsBox.put('deviceId', deviceId);
   await settingsBox.put('displayName', displayName);
 
-  runApp(const TasukeApp());
+  runApp(const BeaconApp());
 }

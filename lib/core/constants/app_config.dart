@@ -1,6 +1,6 @@
 class AppConfig {
-  static const String appName = 'Tasuke';
-  static const String appNameJa = '助け';
+  static const String appName = 'Beacon';
+  static const String appTagline = 'When infrastructure fails, people shouldn\'t.';
 
   // BLE UUIDs
   static const String serviceUuid = '00001234-0000-1000-8000-00805f9b34fb';

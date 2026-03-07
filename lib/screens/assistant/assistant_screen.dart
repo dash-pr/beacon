@@ -159,7 +159,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
             Icon(Icons.smart_toy, size: 48, color: AppColors.accent),
             const SizedBox(height: 16),
             const Text(
-              'Tasuke AI Assistant',
+              'Beacon AI Assistant',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,

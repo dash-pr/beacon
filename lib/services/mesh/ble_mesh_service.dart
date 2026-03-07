@@ -90,7 +90,7 @@ class BleMeshService {
 
       await peripheral.BlePeripheral.startAdvertising(
         services: [AppConfig.serviceUuid],
-        localName: 'Tasuke',
+        localName: 'Beacon',
       );
     } catch (e) {
       // Peripheral may not be supported on all devices

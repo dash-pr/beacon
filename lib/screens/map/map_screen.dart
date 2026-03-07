@@ -42,7 +42,7 @@ class _MapScreenState extends State<MapScreen> {
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              userAgentPackageName: 'com.tasuke.tasuke',
+              userAgentPackageName: 'com.beacon.app',
             ),
             MarkerLayer(
               markers: _shelters.map((shelter) {

@@ -13,7 +13,7 @@ class LlmService {
     try {
       _systemPrompt = await rootBundle.loadString('assets/prompts/system_prompt.txt');
     } catch (_) {
-      _systemPrompt = 'You are Tasuke, an emergency first-aid assistant.';
+      _systemPrompt = 'You are Beacon, an emergency first-aid assistant.';
     }
     // flutter_gemma would be initialized here on Android.
     // On web, we use hardcoded offline responses.
@@ -166,8 +166,8 @@ class LlmService {
     }
 
     return hasJa
-        ? '私はTasukeです。応急手当、地震・津波の安全対策、食料・水の安全、山岳救助、低体温・凍傷対策、避難所の情報についてお手伝いできます。状況を教えてください。'
-        : 'I am Tasuke, your emergency assistant. I can help with: '
+        ? '私はBeaconです。応急手当、地震・津波の安全対策、食料・水の安全、山岳救助、低体温・凍傷対策、避難所の情報についてお手伝いできます。状況を教えてください。'
+        : 'I am Beacon, your emergency assistant. I can help with: '
             'first aid, earthquake/tsunami safety, food/water safety, '
             'mountain rescue, hypothermia/frostbite, avalanche response, '
             'and navigation when lost. Describe your situation for advice.';

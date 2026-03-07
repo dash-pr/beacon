@@ -45,7 +45,7 @@ class AssistantBubble extends StatelessWidget {
                     Icon(Icons.smart_toy, size: 14, color: AppColors.accentLight),
                     const SizedBox(width: 4),
                     Text(
-                      'Tasuke AI',
+                      'Beacon AI',
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

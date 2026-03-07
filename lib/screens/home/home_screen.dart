@@ -41,12 +41,8 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Row(
           children: [
             Text(
-              'Tasuke ',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              '助け',
-              style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              'Beacon',
+              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
             ),
           ],
         ),
@@ -154,34 +150,33 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
-        type: BottomNavigationBarType.fixed,
-        items: const [
-          BottomNavigationBarItem(
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _currentIndex,
+        onDestinationSelected: (index) => setState(() => _currentIndex = index),
+        destinations: const [
+          NavigationDestination(
             icon: Icon(Icons.chat_bubble_outline),
-            activeIcon: Icon(Icons.chat_bubble),
+            selectedIcon: Icon(Icons.chat_bubble),
             label: 'Chat',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.smart_toy_outlined),
-            activeIcon: Icon(Icons.smart_toy),
+            selectedIcon: Icon(Icons.smart_toy),
             label: 'Assistant',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.map_outlined),
-            activeIcon: Icon(Icons.map),
+            selectedIcon: Icon(Icons.map),
             label: 'Map',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.warning_amber_outlined),
-            activeIcon: Icon(Icons.warning_amber),
+            selectedIcon: Icon(Icons.warning_amber),
             label: 'Alerts',
           ),
-          BottomNavigationBarItem(
+          NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
-            activeIcon: Icon(Icons.dashboard),
+            selectedIcon: Icon(Icons.dashboard),
             label: 'Responder',
           ),
         ],
